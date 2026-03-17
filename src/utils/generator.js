@@ -56,7 +56,7 @@ export function generateWorkout(config) {
     minGap = 2,
   } = config;
 
-  const n = Math.max(1, Math.floor(workDuration / avgFrequency));
+  const n = Math.max(1, Math.floor(workDuration / (avgFrequency + minGap)));
   const events = [];
   const phases = [];
   let t = 0;
