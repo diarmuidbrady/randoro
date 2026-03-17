@@ -80,10 +80,6 @@ export default function SetupScreen({ navigation }) {
       Alert.alert('Invalid', 'Work duration must be at least 10 seconds.');
       return;
     }
-    if (minGap >= avgFrequency) {
-      Alert.alert('Invalid', 'Min gap must be less than average frequency.');
-      return;
-    }
     if (work < minGap) {
       Alert.alert('Invalid', 'Work duration must be longer than the min gap.');
       return;
