@@ -8,7 +8,7 @@ export const PHASE_COLORS = {
 };
 
 // Intensity controls avg seconds between pings.
-export const INTENSITY_MAP = { Low: 7, Medium: 5, High: 3 };
+export const INTENSITY_MAP = { Low: 5, Medium: 3, High: 1 };
 export const INTENSITY_LABELS = ['Low', 'Medium', 'High'];
 
 // Combo controls minimum gap between consecutive pings.
