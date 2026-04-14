@@ -8,8 +8,10 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Picker } from '@react-native-picker/picker';
 import {
   INTENSITY_MAP,
   INTENSITY_LABELS,
@@ -21,12 +23,12 @@ import { formatTime, parseSeconds } from '../utils/time';
 import { generateWorkout } from '../utils/generator';
 
 const DEFAULT_CONFIG = {
-  warmup: '0',
+  warmup: {minutes: 0, seconds: 0},
   rounds: '3',
-  workDuration: '180',
-  restDuration: '60',
+  workDuration: {minutes: 3, seconds: 0},
+  restDuration: {minutes: 1, seconds: 0},
   restFirst: false,
-  cooldown: '0',
+  cooldown: {minutes: 0, seconds: 0},
   intensity: 'Medium',
   combo: 'Combination',
   isCustom: false,
@@ -58,8 +60,8 @@ export default function SetupScreen({ navigation }) {
   const getIntervalSettings = () => {
     if (isCustom) {
       return {
-        minGap: parseSeconds(customMinGap) || 1,
-        avgFrequency: parseSeconds(customAvgFrequency) || 5,
+        minGap: parseFloat(customMinGap) || 1,
+        avgFrequency: parseFloat(customAvgFrequency) || 5,
       };
     }
     return {
@@ -71,7 +73,7 @@ export default function SetupScreen({ navigation }) {
   const handleStart = () => {
     const work = parseSeconds(workDuration);
     const rest = parseSeconds(restDuration);
-    const r = parseSeconds(rounds) || 1;
+    const r = parseInt(rounds) || 1;
     const warm = parseSeconds(warmup);
     const cool = parseSeconds(cooldown);
     const { minGap, avgFrequency } = getIntervalSettings();
@@ -111,14 +113,13 @@ export default function SetupScreen({ navigation }) {
           <View style={styles.secondaryRow}>
             <Text style={styles.secondaryLabel}>Warm Up</Text>
             <View style={styles.secondaryInputWrap}>
-              <TextInput
-                style={styles.secondaryInput}
+              <DurationPicker
+                label={''}
                 value={warmup}
-                onChangeText={setWarmup}
-                keyboardType="numeric"
-                maxLength={4}
+                onChange={setWarmup}
+                color={'#6B7280'}
+                variant={"peripheral"}
               />
-              <Text style={styles.secondaryUnit}>{formatTime(parseSeconds(warmup))}</Text>
             </View>
           </View>
 
@@ -140,17 +141,19 @@ export default function SetupScreen({ navigation }) {
             {/* Work ↔ Rest horizontal layout */}
             <View style={styles.workRestRow}>
               {restFirst ? (
-                <DurationBlock label="Rest" value={restDuration} onChange={setRestDuration} color="#22C55E" />
+                <DurationPicker label="Rest" value={restDuration} onChange={setRestDuration} color="#22C55E" />
               ) : (
-                <DurationBlock label="Work" value={workDuration} onChange={setWorkDuration} color="#EF4444" />
+                <DurationPicker label="Work" value={workDuration} onChange={setWorkDuration} color="#EF4444" />
               )}
               <TouchableOpacity style={styles.swapButton} onPress={() => setRestFirst(v => !v)}>
                 <Text style={styles.swapIcon}>↔</Text>
               </TouchableOpacity>
               {restFirst ? (
-                <DurationBlock label="Work" value={workDuration} onChange={setWorkDuration} color="#EF4444" />
+                <DurationPicker label="Work" value={workDuration} onChange={setWorkDuration} color="#EF4444" 
+                variant={"main"}/>
               ) : (
-                <DurationBlock label="Rest" value={restDuration} onChange={setRestDuration} color="#22C55E" />
+                <DurationPicker label="Rest" value={restDuration} onChange={setRestDuration} color="#22C55E" 
+                variant={"main"}/>
               )}
             </View>
           </View>
@@ -161,14 +164,13 @@ export default function SetupScreen({ navigation }) {
           <View style={styles.secondaryRow}>
             <Text style={styles.secondaryLabel}>Cool Down</Text>
             <View style={styles.secondaryInputWrap}>
-              <TextInput
+              <DurationPicker
                 style={styles.secondaryInput}
                 value={cooldown}
-                onChangeText={setCooldown}
-                keyboardType="numeric"
-                maxLength={4}
+                onChange={setCooldown}
+                color={'#6B7280'}
+                variant={"peripheral"}
               />
-              <Text style={styles.secondaryUnit}>{formatTime(parseSeconds(cooldown))}</Text>
             </View>
           </View>
         </View>
@@ -287,20 +289,61 @@ export default function SetupScreen({ navigation }) {
   );
 }
 
-function DurationBlock({ label, value, onChange, color }) {
+function DurationPicker({ label, color, value, onChange, variant }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const display = `${String(value.minutes).padStart(2, '0')}:${String(value.seconds).padStart(2, '0')}`;
+
+  const pickerModal = (
+    <Modal visible={isOpen} transparent animationType="slide">
+      <View style={styles.pickerModalOverlay}>
+        <View style={styles.pickerModalSheet}>
+          <TouchableOpacity style={styles.pickerModalDone} onPress={() => setIsOpen(false)}>
+            <Text style={styles.pickerModalDoneText}>Done</Text>
+          </TouchableOpacity>
+          <View style={{ flexDirection: 'row' }}>
+            <Picker
+              selectedValue={value.minutes}
+              onValueChange={(m) => onChange({ ...value, minutes: m })}
+              style={{ flex: 1 }}
+            >
+              {Array.from({ length: 61 }, (_, i) => i).map(n => (
+                <Picker.Item key={n} label={`${n}m`} value={n} />
+              ))}
+            </Picker>
+            <Picker
+              selectedValue={value.seconds}
+              onValueChange={(s) => onChange({ ...value, seconds: s })}
+              style={{ flex: 1 }}
+            >
+              {Array.from({ length: 61 }, (_, i) => i).map(n => (
+                <Picker.Item key={n} label={`${n}s`} value={n} />
+              ))}
+            </Picker>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  if (variant === 'peripheral') {
+    return (
+      <View style={styles.peripheralRow}>
+        <Text style={styles.secondaryLabel}>{label}</Text>
+        <TouchableOpacity onPress={() => setIsOpen(true)}>
+          <Text style={styles.durationDisplay}>{display}</Text>
+        </TouchableOpacity>
+        {pickerModal}
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.durationBlock, { borderTopColor: color }]}>
       <Text style={styles.durationLabel}>{label}</Text>
-      <View style={styles.durationInputRow}>
-        <TextInput
-          style={styles.durationInput}
-          value={value}
-          onChangeText={onChange}
-          keyboardType="numeric"
-          maxLength={4}
-        />
-        <Text style={styles.durationUnit}>{formatTime(parseSeconds(value))}</Text>
-      </View>
+      <TouchableOpacity onPress={() => setIsOpen(true)}>
+        <Text style={styles.durationDisplay}>{display}</Text>
+      </TouchableOpacity>
+      {pickerModal}
     </View>
   );
 }
@@ -601,5 +644,42 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: 2,
+  },
+
+  peripheralRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  durationDisplay: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#111827',
+    paddingVertical: 4,
+  },
+  pickerModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  pickerModalSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: 24,
+  },
+  pickerModalDone: {
+    alignItems: 'flex-end',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  pickerModalDoneText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
   },
 });

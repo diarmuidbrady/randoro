@@ -15,6 +15,8 @@ export function formatElapsed(totalSeconds) {
 }
 
 export function parseSeconds(value) {
-  const n = parseFloat(value);
-  return isNaN(n) || n < 0 ? 0 : n;
+  const minutes = parseFloat(value.minutes);
+  const seconds = parseFloat(value.seconds);
+  const totalSeconds = (isNaN(minutes) ? 0 : minutes * 60) + (isNaN(seconds) ? 0 : seconds);
+  return totalSeconds < 0 ? 0 : totalSeconds;
 }
