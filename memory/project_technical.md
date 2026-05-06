@@ -19,4 +19,8 @@ expo-av is fully deprecated as of SDK 55. expo-audio is the current replacement.
 
 **TestFlight workflow:** Archive in Xcode → Distribute → App Store Connect → Upload. Build number increments each archive. Version number stays at 1.0.0 until public App Store release.
 
-**Audio session config:** setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true }) — interruptionMode defaults to 'mixWithOthers' which is correct for mixing with music.
+**Audio session config (current, post-investigation):**
+- Native: `plugins/withAudioSession.js` config plugin injects `AVAudioSession.setCategory(.playback, mode: .default, options: [])` + `setActive(true)` into AppDelegate at launch (idempotent via BEGIN/END markers). Survives `expo prebuild`.
+- JS: `setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true, allowsRecording: false, interruptionMode: 'doNotMix' })` in RunningScreen.js. `'doNotMix'` produces empty options matching the native config.
+- Per-player: every `useAudioPlayer` call passes `{ keepAudioSessionActive: true }` — defaults are false and break background.
+- Why these exact params (and what's been ruled out): see [project_audio_session.md](project_audio_session.md).
