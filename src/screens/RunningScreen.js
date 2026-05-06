@@ -9,11 +9,18 @@ import {
 } from 'react-native';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
-// Set audio mode at module load so it applies before any player is created.
-// playsInSilentMode  — bypass the iOS silent switch
-// shouldPlayInBackground — keep audio active when app is backgrounded
-//   (requires UIBackgroundModes:audio in app.json + a native rebuild)
-setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true }).catch(() => {});
+// Native AppDelegate sets .playback at launch (plugins/withAudioSession.js).
+// This call sets shouldPlayInBackground=true (without it, expo-audio explicitly
+// pauses all players when the app backgrounds). interruptionMode='doNotMix'
+// matches our native options=[]; using mixWithOthers here breaks A2DP routing
+// to the Anker Soundcore A3102 speaker.
+setAudioModeAsync({
+  playsInSilentMode: true,
+  shouldPlayInBackground: true,
+  allowsRecording: false,
+  interruptionMode: 'doNotMix',
+}).catch(() => {});
+
 import * as Haptics from 'expo-haptics';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,10 +48,14 @@ export default function RunningScreen({ route, navigation }) {
   const flashAnim = useRef(new Animated.Value(0)).current;
 
   // ── Audio players (expo-audio) ────────────────────────────
-  const pingPlayer       = useAudioPlayer(require('../../assets/sounds/ping.wav'));
-  const doublePlayer     = useAudioPlayer(require('../../assets/sounds/double.wav'));
-  const doubleRestPlayer = useAudioPlayer(require('../../assets/sounds/double_rest.wav'));
-  const triplePlayer     = useAudioPlayer(require('../../assets/sounds/triple.wav'));
+  // keepAudioSessionActive: true prevents expo-audio from calling setActive(false)
+  // after each beep finishes. Without this, between beeps the session deactivates
+  // and iOS suspends the app in background, killing subsequent beeps.
+  const playerOpts = { keepAudioSessionActive: true };
+  const pingPlayer       = useAudioPlayer(require('../../assets/sounds/ping.wav'), playerOpts);
+  const doublePlayer     = useAudioPlayer(require('../../assets/sounds/double.wav'), playerOpts);
+  const doubleRestPlayer = useAudioPlayer(require('../../assets/sounds/double_rest.wav'), playerOpts);
+  const triplePlayer     = useAudioPlayer(require('../../assets/sounds/triple.wav'), playerOpts);
 
   // ── Keep awake ────────────────────────────────────────────
   useEffect(() => {
