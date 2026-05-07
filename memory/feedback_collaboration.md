@@ -31,3 +31,7 @@ How to apply: Think through all options before ruling them out.
 **Deprecation notices should be flagged — don't use deprecated commands.**
 Why: User caught that `pod install` directly is deprecated in React Native. Should use `npx expo run:ios` instead.
 How to apply: Watch for deprecation warnings in command output and update recommendations accordingly.
+
+**Experimentation stays out of commits — document journeys in memory instead.**
+Why: User explicitly stated "committed code is intended for code that has been tested and works. all of this is experimentation and can be documented separately." Diagnostic tweaks, intermediate hypotheses, and dead-end attempts pollute git history and make `git log` unreadable in 6 months.
+How to apply: During investigations, hold edits uncommitted on dev. When a working config is found, commit ONE clean change (no DIAGNOSTIC comments, no defensive code added only for fast-refresh debugging unless legitimately needed). Capture the journey as stages in `memory/randoro_bluetooth_audio_journey_log.md` and the takeaways in the relevant `project_*.md` memory file. Use `git stash` for partial work that's not ready to commit.

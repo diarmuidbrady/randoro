@@ -180,3 +180,133 @@ Key technical takeaways
 setAudioModeAsync always rebuilds the entire category — partial calls aren't possible, but 'doNotMix' produces empty options
 expo-audio defaults (keepAudioSessionActive: false, shouldPlayInBackground: false) actively fight against background interval timers
 iOS UIBackgroundModes:audio requires flowing samples, not just an active session — hence the universal silent-loop hack across timer apps
+
+=== SESSION 2 — 2026-05-06 to 2026-05-07 ===
+Picked up the silent-loop hack from "Most promising next directions" above. The plan was: looped silent.wav at volume 0, started on workout begin, stopped on unmount. It did not work as written — discovering why exposed two new findings (expo-audio's loop has gaps, and iOS inspects PCM content). Bug 2 is now fixed for phone speaker. Bug 1 (A3102 alone) is unchanged.
+
+--- Stage 12: Initial silent-loop implementation ---
+Situation: Plan from end of Session 1 — generate silence.wav, create silencePlayer with loop=true and volume=0, drive via isRunning state.
+
+Change made:
+- scripts/generate-sounds.js — added silence entry to files map: { freq: 0, duration: 1.0 }. Math: sin(0) = 0 for every sample, so existing buildWav produces 1 s of zero-amplitude PCM (~88 KB) with no new helpers.
+- src/screens/RunningScreen.js — silencePlayer = useAudioPlayer(silence.wav, { keepAudioSessionActive: true }). Set loop=true and volume=0 in a useEffect. Started on isRunning=true, paused via cleanup.
+- Generated silence.wav.
+
+Decision rationale: Smallest possible change. Reuse existing buildWav. Drive playback off existing isRunning state — no new state. Both bugs might fix together if continuous audio claims the A2DP route incidentally.
+
+Outcome: Test failed. Cold A3102 alone — still silent. Spotify-anchor case — first beep fires, then audio drops out. Silent-loop hack as initially configured did not solve either bug.
+
+--- Stage 13: Diagnostic — verify the loop is even running ---
+Situation: With volume 0 and zero-PCM, can't tell whether silencePlayer.play() is firing. Need to make the silent stream audible to confirm.
+
+Change made:
+- buildWav extended with optional amplitude and fade params (defaults preserve beep behavior)
+- silence.wav regenerated as 1 s of 110 Hz sine (amplitude 0.3, no fade) — 110 cycles × 1 s = integer cycles, no discontinuity at loop boundary
+- silencePlayer.volume bumped to 0.5
+- Patched cleanup with try/catch: NativeSharedObjectNotFoundException was thrown when silencePlayer.pause() ran on a player whose native counterpart had been reaped (Fast Refresh / iOS reaping after extended background)
+
+Decision rationale: One variable at a time. Audible drone surfaces whether the loop is firing AND lets us hear how it's behaving over time.
+
+Outcome: User reported "buzz for ~1 s, stops for ~1/10 s, repeats." expo-audio's loop=true is NOT gapless — there's a ~100 ms restart latency between iterations. Smoking gun for why "continuous samples" was never actually continuous.
+
+User also reported: "buzzing persisted 1-2 s after lock screen, then stopped all audio." The 1-2 s window matches a single drone iteration playing through the lock event before the loop boundary hits and iOS suspends.
+
+What this ruled out: loop=true with expo-audio cannot deliver gapless audio.
+
+--- Stage 14: Test the loop-gap hypothesis ---
+Situation: If the 100 ms loop gap is what kills background mode, a single non-looped long file should keep iOS happy.
+
+Change made:
+- silence.wav regenerated as 60 s of 110 Hz drone at amplitude 0.3 (still audible)
+- silencePlayer.loop = false
+
+Decision rationale: Disambiguate "iOS suspends regardless" from "iOS suspends because of loop gap." Single play has zero loop boundaries.
+
+Outcome: Drone played continuously through both backgrounding and lock screen for the full 60 s, beeps fired throughout. Hypothesis confirmed: expo-audio's loop gap was the killer for Bug 2. Silent-loop hack works without the loop.
+
+--- Stage 15: Production attempt — long single-play true silence ---
+Situation: Loop-gap fixed in principle. Need a silent (volume 0) production version covering plausible workout durations.
+
+Change made:
+- Refactored scripts/generate-sounds.js: extracted writeWavHeader, added separate buildSilenceWav generating zero-PCM at 8 kHz mono. Reverted Stage 13's amplitude/fade params on buildWav since no longer needed.
+- silence.wav: 60 min × 8 kHz × 16-bit × mono = 57.6 MB true silence (zero-filled buffer + WAV header)
+- silencePlayer.volume = 0
+- silencePlayer.loop = false (kept from Stage 14)
+- silencePlayer.seekTo(0) on each play() → fresh 60-min runway on each pause/resume
+
+Decision rationale: 60 min covers typical boxing classes. 8 kHz cuts file size 5x vs 44.1 kHz — silence quality is irrelevant. seekTo(0) handles the pause/resume edge case.
+
+Outcome: Major regression. User test results:
+- Cold A3102 alone: no audio (Bug 1 unchanged)
+- Spotify-anchor case: audio plays for exactly 5 s, then a "speaker disconnect tone" sounds (the BT speaker's standard timeout chime), then dies
+- Phone speaker backgrounded: dies (regressed from Stage 14 where the audible drone worked)
+- Cold open then start Spotify externally during workout: Randoro audio works much longer
+
+The 5 s cutoff is consistent and the new key data point.
+
+--- Stage 16: New hypothesis — iOS inspects PCM content ---
+Situation: Stage 14 (audible drone) worked in background. Stage 15 (zero-PCM, volume 0) didn't. Two variables changed at once — PCM content and volume. The 5 s cutoff in Stage 15's Spotify case suggests an iOS heuristic firing.
+
+Hypothesis: iOS doesn't just check session configuration. It inspects the audio stream's actual sample content after a ~5 s grace period. Zero-PCM is rejected as "not really playing audio," causing iOS to release the A2DP route and suspend the app. The 5 s timer matches the Spotify-anchor cutoff exactly.
+
+Explains all four Stage 15 scenarios:
+- Cold + A3102: zero-PCM never claims the route in the first place
+- Spotify anchor → 5 s → die: route piggybacks on Spotify's pause-tail, then iOS's content check fires at 5 s, sees zeros, releases
+- Spotify started externally during workout: real audio in the shared session keeps iOS satisfied indefinitely
+- Background dies: zero-PCM stream not recognized as "playing audio"
+
+If true, the fix is: real PCM samples (so iOS sees audio) + volume 0 (so user hears nothing).
+
+--- Stage 17: Production attempt v2 — non-zero PCM + volume 0 ---
+Situation: Need iOS to see real samples while keeping output silent.
+
+Change made:
+- silence.wav: 60 min of 110 Hz sine at amplitude 0.05 (low PCM content) at 8 kHz mono — same 57.6 MB file size
+- silencePlayer.volume = 0 (still silent to user)
+- silencePlayer.loop = false (still single play)
+
+Decision rationale: If iOS inspects PCM pre-volume (most likely), this satisfies the content check while remaining silent at the output. Low amplitude (0.05) means even leakage at high volume would be quiet. Falls back to volume = 0.001 if iOS turns out to check post-volume.
+
+Outcome: Mixed — Bug 2 confirmed FIXED on phone speaker; Bug 1 (A3102) still failing.
+
+User test results:
+- Phone speaker — works in foreground, with Spotify (Spotify pauses when Randoro plays, expected behavior), in background, and on lock screen ✓ Bug 2 FIXED for phone speaker.
+- A3102, cold open without Spotify — no audio ✗ (Bug 1 unchanged)
+- A3102, Spotify playing on app open → press Start (Spotify pauses) — no audio ✗
+- A3102, Spotify playing on app open → resume Spotify in Randoro app → press Start — Randoro audio plays for a few seconds, then cuts out (audible audio drop on speaker as iOS releases the route) ✗
+
+Confirms Stage 16's hypothesis (PCM content matters; non-zero PCM with volume=0 keeps iOS satisfied for the phone-speaker route). Does NOT solve A3102's separate "won't accept Randoro alone" bug.
+
+Updated Current State (end of Session 2)
+What's working
+- Phone speaker — foreground, background, lock screen, with or without Spotify ✓
+- Beeps fire reliably through screen lock and app backgrounding (Bug 2 fixed for the default output)
+- silencePlayer with non-zero PCM content and volume=0 is silent to user, satisfies iOS's content check
+
+What's broken (still)
+- A3102 cold open alone — Randoro can't open the A2DP route from cold
+- A3102 with Spotify anchor (resume-then-play case) — Randoro briefly piggybacks on Spotify's route then loses it after a few seconds
+- A3102 with Spotify-pauses-on-app-open then press Start — no audio at all
+
+Key technical takeaways added this session
+- expo-audio's loop=true has a ~100 ms restart gap between iterations — not gapless
+- iOS inspects audio stream PCM content after a ~5 s grace period; zero-PCM streams are rejected as "not really playing audio"
+- Non-zero PCM (any amplitude) + volume=0 gives the right combination for the silent-loop hack: iOS sees content, user hears nothing
+- Single long non-looped file is the production shape (no loop = no gap = iOS keeps the app alive)
+- expo-audio's native player can be reaped during Fast Refresh / extended background — defensive try/catch around .play()/.pause() is needed
+
+Things ruled out for good (added)
+- expo-audio loop=true cannot deliver gapless audio (Stage 13)
+- Zero-PCM silence does not satisfy iOS even with full session config (Stage 15)
+- iOS does not aggressively suspend audio in background when real samples flow (Stage 14)
+
+Open / Most promising next directions
+The "if silent loop fixes background but not A3102" plan from Session 1 is now the active path:
+1. MPNowPlayingInfoCenter registration — elevates Randoro's session to "primary" status, may make A3102 willing to route to it from cold
+2. setPreferredOutput to force route to the BT speaker
+3. Brief audible-but-quiet ping at workout start to claim the A2DP route, then go silent (the silent loop holds it open after that)
+
+Current code state (uncommitted on dev branch)
+- scripts/generate-sounds.js — refactored: buildBeepsWav at 44.1 kHz for beeps, buildSilenceWav at 8 kHz for silence, shared writeWavHeader. Generates silence.wav as 60 min low-amplitude 110 Hz drone.
+- src/screens/RunningScreen.js — silencePlayer with loop=false, volume=0, seekTo(0) on play, try/catch around pause/play.
+- assets/sounds/silence.wav — 57.6 MB, untracked.
