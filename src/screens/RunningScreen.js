@@ -56,6 +56,26 @@ export default function RunningScreen({ route, navigation }) {
   const doublePlayer     = useAudioPlayer(require('../../assets/sounds/double.wav'), playerOpts);
   const doubleRestPlayer = useAudioPlayer(require('../../assets/sounds/double_rest.wav'), playerOpts);
   const triplePlayer     = useAudioPlayer(require('../../assets/sounds/triple.wav'), playerOpts);
+  // 60 min low-amplitude 110 Hz sine, played non-looped at volume 0 while running.
+  // iOS suspends the app in background unless real audio samples flow continuously.
+  // Two non-obvious requirements: (1) no loop gap — expo-audio's loop=true has a
+  // ~100 ms gap iOS treats as "audio stopped", so we play one long file; (2) real
+  // PCM content — iOS inspects the stream after a ~5 s grace period and rejects
+  // zero-PCM as "not really playing audio". volume=0 keeps it silent to the user.
+  // See memory/project_audio_session.md.
+  const silencePlayer    = useAudioPlayer(require('../../assets/sounds/silence.wav'), playerOpts);
+
+  useEffect(() => {
+    silencePlayer.loop = false;
+    silencePlayer.volume = 0;
+  }, [silencePlayer]);
+
+  useEffect(() => {
+    if (isRunning) {
+      silencePlayer.play();
+      return () => silencePlayer.pause();
+    }
+  }, [isRunning, silencePlayer]);
 
   // ── Keep awake ────────────────────────────────────────────
   useEffect(() => {
