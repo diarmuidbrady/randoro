@@ -351,6 +351,8 @@ User test results:
 
 Confirms Stage 16's hypothesis (PCM content matters; non-zero PCM with volume=0 keeps iOS satisfied for the phone-speaker route). Does NOT solve A3102's separate "won't accept Randoro alone" bug.
 
+**Commit.** `ca6430d` on `debug/bluetooth-audio-fix`.
+
 ---
 
 ## End of Session 2 — State Summary
