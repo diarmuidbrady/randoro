@@ -67,7 +67,8 @@ export default function RunningScreen({ route, navigation }) {
 
   useEffect(() => {
     silencePlayer.loop = false;
-    silencePlayer.volume = 0;
+    // Tiny non-zero output level.
+    silencePlayer.volume = 0.5;
   }, [silencePlayer]);
 
   useEffect(() => {
