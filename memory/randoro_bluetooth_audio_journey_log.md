@@ -353,46 +353,21 @@ Confirms Stage 16's hypothesis (PCM content matters; non-zero PCM with volume=0 
 
 **Commit.** `ca6430d` on `debug/bluetooth-audio-fix`.
 
----
+### Stage 18: silencePlayer minimal non-zero volume
 
-## End of Session 2 — State Summary
+**Situation.** Stage 17 set `silencePlayer.volume = 0`. Phone speaker worked in all scenarios but A3102 was still broken — silent on cold open, dropped after a few seconds with a Spotify anchor. Stage 14, which had `volume = 0.5` with an audible drone, had worked on A3102. The volume difference between Stage 14 and Stage 17 hadn't been isolated as its own variable.
 
-### What's working
+**Change made.** `silencePlayer.volume = 0` → `silencePlayer.volume = 0.05` in `src/screens/RunningScreen.js`. PCM amplitude unchanged at 0.05.
 
-- Phone speaker — foreground, background, lock screen, with or without Spotify ✓
-- Beeps fire reliably through screen lock and app backgrounding (Bug 2 fixed for the default output)
-- `silencePlayer` with non-zero PCM content and `volume=0` is silent to user, satisfies iOS's content check
+**Decision rationale.** Bluetooth routing in background and on lock screen needs constant non-zero volume. 0.05 is below the threshold of perception in a normal room.
 
-### What's broken (still)
+**Outcome.** Works in every tested scenario:
 
-- **A3102 cold open alone** — Randoro can't open the A2DP route from cold
-- **A3102 with Spotify anchor (resume-then-play case)** — Randoro briefly piggybacks on Spotify's route then loses it after a few seconds
-- **A3102 with Spotify-pauses-on-app-open then press Start** — no audio at all
+- Phone speaker — foreground, background, lock screen ✓
+- A3102 cold open alone ✓
+- A3102 with Spotify anchor ✓
+- Drone inaudible in all cases
 
-### Key technical takeaways added this session
+Bug 1 (A3102 cold-route) and Bug 2 (background) both resolved.
 
-- expo-audio's `loop=true` has a ~100 ms restart gap between iterations — not gapless
-- iOS inspects audio stream PCM content after a ~5 s grace period; zero-PCM streams are rejected as "not really playing audio"
-- Non-zero PCM (any amplitude) + `volume=0` gives the right combination for the silent-loop hack: iOS sees content, user hears nothing
-- Single long non-looped file is the production shape (no loop = no gap = iOS keeps the app alive)
-- expo-audio's native player can be reaped during Fast Refresh / extended background — defensive try/catch around `.play()`/`.pause()` is needed
-
-### Things ruled out for good (added)
-
-- expo-audio `loop=true` cannot deliver gapless audio (Stage 13)
-- Zero-PCM silence does not satisfy iOS even with full session config (Stage 15)
-- iOS does not aggressively suspend audio in background when real samples flow (Stage 14)
-
-### Open / Most promising next directions
-
-The "if silent loop fixes background but not A3102" plan from Session 1 is now the active path:
-
-1. **`MPNowPlayingInfoCenter` registration** — elevates Randoro's session to "primary" status, may make A3102 willing to route to it from cold
-2. **`setPreferredOutput`** to force route to the BT speaker
-3. **Brief audible-but-quiet ping at workout start** to claim the A2DP route, then go silent (the silent loop holds it open after that)
-
-### Current code state (uncommitted on dev branch)
-
-- `scripts/generate-sounds.js` — refactored: `buildBeepsWav` at 44.1 kHz for beeps, `buildSilenceWav` at 8 kHz for silence, shared `writeWavHeader`. Generates `silence.wav` as 60 min low-amplitude 110 Hz drone.
-- `src/screens/RunningScreen.js` — `silencePlayer` with `loop=false`, `volume=0`, `seekTo(0)` on play, try/catch around pause/play.
-- `assets/sounds/silence.wav` — 57.6 MB, untracked.
+**Commit.** `e87bd1c` on `debug/bluetooth-audio-fix`.
