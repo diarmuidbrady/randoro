@@ -10,7 +10,7 @@ const SWIFT_BODY = `    ${BEGIN}
       try AVAudioSession.sharedInstance().setCategory(
         .playback,
         mode: .default,
-        options: []
+        options: [.mixWithOthers]
       )
       try AVAudioSession.sharedInstance().setActive(true)
       let route = AVAudioSession.sharedInstance().currentRoute
