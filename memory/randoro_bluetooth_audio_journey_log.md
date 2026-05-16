@@ -371,3 +371,18 @@ Confirms Stage 16's hypothesis (PCM content matters; non-zero PCM with volume=0 
 Bug 1 (A3102 cold-route) and Bug 2 (background) both resolved.
 
 **Commit.** `e87bd1c` on `debug/bluetooth-audio-fix`.
+
+### Stage 19: setAudioModeAsync → mixWithOthers
+
+**Situation.** `doNotMix` made Randoro pause Spotify on workout start. Want them to mix.
+
+**Change made.** `interruptionMode: 'doNotMix'` → `'mixWithOthers'` in `setAudioModeAsync` at the top of `src/screens/RunningScreen.js`.
+
+**Decision rationale.** Maps directly to AVAudioSession's `.mixWithOthers` option.
+
+**Outcome.** Partial.
+
+- After app open, Randoro beeps mix with Spotify without pausing it ✓
+- App still pauses Spotify on initial open ✗
+
+**Commit.** (to fill after commit)
