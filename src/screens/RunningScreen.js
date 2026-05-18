@@ -18,7 +18,7 @@ setAudioModeAsync({
   playsInSilentMode: true,
   shouldPlayInBackground: true,
   allowsRecording: false,
-  interruptionMode: 'mixWithOthers',
+  interruptionMode: 'duckOthers',
 }).catch(() => {});
 
 import * as Haptics from 'expo-haptics';

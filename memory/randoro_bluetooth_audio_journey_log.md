@@ -385,4 +385,31 @@ Bug 1 (A3102 cold-route) and Bug 2 (background) both resolved.
 - After app open, Randoro beeps mix with Spotify without pausing it ✓
 - App still pauses Spotify on initial open ✗
 
+**Commit.** ab799bff
+
+### Stage 20: AppDelegate setCategory options → [.mixWithOthers]
+
+**Situation.** Stage 19 set the JS-level interruption mode to `mixWithOthers`, but the native plugin still injected `options: []` into AppDelegate. The AppDelegate's `setCategory` + `setActive(true)` runs at app launch before any JS, so even with Stage 19 in place, the initial session activation interrupted Spotify.
+
+**Change made.** `plugins/withAudioSession.js`: `options: []` → `options: [.mixWithOthers]`. Re-ran `npx expo prebuild --platform ios` to regenerate `AppDelegate.swift`, then `npx expo run:ios --device`.
+
+**Decision rationale.** Match both audio session layers on the same option so the session is configured for mixing from app launch onwards.
+
+**Outcome.** Partial.
+
+- `ios/randoro/AppDelegate.swift` verified containing `options: [.mixWithOthers]` ✓
+- Spotify still pauses on initial app open ✗
+
+Root cause not yet isolated; possibly related to `setAudioModeAsync` at the top of `RunningScreen.js`.
+
+**Commit.** 9514547d
+
+### Stage 21: setAudioModeAsync interruptionMode mixWithOthers → duckOthers
+
+**Situation.** While trying to fix the initial open, I explored other interruption options.
+
+**Change made.** `setAudioModeAsync` interruption mode `'mixWithOthers'` → `'duckOthers'` in `src/screens/RunningScreen.js`. duckOthers lowers Spotify's volume while Randoro plays so audio cues cut through clearly.
+
+**Outcome.** Doesn't solve pause on initial open. But nicer audio experience
+
 **Commit.** (to fill after commit)
