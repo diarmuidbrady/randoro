@@ -413,3 +413,13 @@ Root cause not yet isolated; possibly related to `setAudioModeAsync` at the top 
 **Outcome.** Doesn't solve pause on initial open. But nicer audio experience
 
 **Commit.** (to fill after commit)
+
+### Stage 22: Decision — accept on-open Spotify pause as v1 behavior
+
+**Situation.** Diagnostic confirmed `setAudioModeAsync` at module load is what pauses Spotify on app open. Without it, `playsInSilentMode` and `shouldPlayInBackground` are missing, breaking audio (sound silenced when Ring/Silent switch is on silent; players paused on background).
+
+**Considered.** Deferring `setAudioModeAsync` to `handleStartPause` so the pause moves from app-open to workout-start. Rejected: pausing audio at the moment the user is mentally ready to begin a workout is worse UX than pausing during setup, when there's head-space to resume Spotify before pressing Start.
+
+**Decision.** Accept the on-open pause. v1 workflow: open app → setup workout (resume Spotify if needed) → press Start → mixing works.
+
+**Commit.** N/A — no code change.
