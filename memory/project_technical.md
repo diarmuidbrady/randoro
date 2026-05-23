@@ -12,6 +12,14 @@ originSessionId: 6db02655-3401-4670-a275-04d82ebca659
 
 **Interval count calculation:** Fixed to use minGap + avgFrequency combined as full_gap, not avgFrequency alone. Removed minGap >= avgFrequency validation as it's no longer needed.
 
+**RoundsPicker component:** Replaced the TextInput for rounds with a scroll wheel using the same Modal pattern as DurationPicker. State stays as a string ('3' default); Number(value) conversion happens at the Picker selectedValue prop, String(v) converts back in onValueChange. Range is 1–50. No separate component file — defined inline in SetupScreen.js alongside DurationPicker.
+
+**Intensity and Punches labels:** "Combo" axis renamed to "Punches" with options 1-2, 3-4, 5-6+ to reflect how long a boxer needs to work after each cue. COMBO_MAP keys updated to match. DEFAULT_CONFIG.combo updated to '1-2'.
+
+**Info tooltips:** A single shared Modal controlled by tooltipKey state (null | 'intensity' | 'combo'). Tapping ? next to Intensity or Punches sets the key; tapping the overlay clears it. Tooltips only appear in the presets view — they're absent when Custom is active. Styling is off-white box with border. The title/header treatment needs improvement — current "💡 Info" reads generically and styling feels mismatched with the rest of the app. To revisit.
+
+**Info tooltip design reference:** macOS notification style — dark rounded card, icon on the left (amber lightbulb on dark background in its own small box), bold title to the right of the icon, body text below. Compact, high contrast, icon and title on the same row. Worth referencing for a future tooltip redesign.
+
 **TestFlight workflow:** Archive in Xcode → Distribute → App Store Connect → Upload. Build number increments each archive. Version number stays at 1.0.0 until public App Store release.
 
 **Audio session config (post-investigation):**
