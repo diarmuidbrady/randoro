@@ -75,7 +75,7 @@ export default function RunningScreen({ route, navigation }) {
   useEffect(() => {
     if (isRunning) {
       silencePlayer.play();
-      return () => silencePlayer.pause();
+      return () => { try { silencePlayer.pause(); } catch {} };
     }
   }, [isRunning, silencePlayer]);
 
