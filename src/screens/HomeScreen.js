@@ -11,7 +11,7 @@ const WAVE_START_PROGRESS = 0.20;
 
 const O_START_X = -SCREEN_WIDTH * 0.65;
 const O_END_X = 0;
-const DOT_END_X_OFFSET = -11; // tune this to shift only the dot left/right at landing
+const DOT_END_X_OFFSET = -13; // tune this to shift only the dot left/right at landing
 
 const DOT_SIZE = 10;
 // Scale factor to grow dot up to roughly the 'o' glyph diameter
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   travellingDot: {
     position: 'absolute',
     right: 0,
-    top: FONT_SIZE * 0.55, // Tune vertical position to sit nicely within 'o' glyph
+    top: FONT_SIZE * 0.62, // Tune vertical position to sit nicely within 'o' glyph
     width: DOT_SIZE,
     height: DOT_SIZE,
     borderRadius: DOT_SIZE / 2,
