@@ -11,8 +11,8 @@ export const PHASE_COLORS = {
 export const INTENSITY_MAP = { Low: 5, Medium: 3, High: 1 };
 export const INTENSITY_LABELS = ['Low', 'Medium', 'High'];
 
-// Combo controls minimum gap between consecutive pings.
-export const COMBO_MAP = { Single: 1, Combination: 2.5, Extended: 4 };
-export const COMBO_LABELS = ['Single', 'Combination', 'Extended'];
+// Punches controls minimum gap between consecutive pings.
+export const COMBO_MAP = { Single: 1, Mid: 1.5, Long: 2 };
+export const COMBO_LABELS = ['1-2', '3-4', '5-6+'];
 
 export const SOUND_OPTIONS = ['ping', 'bell', 'beep', 'double'];

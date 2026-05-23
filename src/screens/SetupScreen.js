@@ -30,7 +30,7 @@ const DEFAULT_CONFIG = {
   restFirst: false,
   cooldown: {minutes: 0, seconds: 0},
   intensity: 'Medium',
-  combo: 'Combination',
+  combo: '1-2',
   isCustom: false,
   customMinGap: '2.5',
   customAvgFrequency: '5',
@@ -56,6 +56,7 @@ export default function SetupScreen({ navigation }) {
   const [soundChoice, setSoundChoice] = useState(DEFAULT_CONFIG.soundChoice);
   const [flashEnabled, setFlashEnabled] = useState(DEFAULT_CONFIG.flashEnabled);
   const [vibrationEnabled, setVibrationEnabled] = useState(DEFAULT_CONFIG.vibrationEnabled);
+  const [tooltipKey, setTooltipKey] = useState(null); // Used to reset tooltips
 
   const getIntervalSettings = () => {
     if (isCustom) {
@@ -172,8 +173,8 @@ export default function SetupScreen({ navigation }) {
           </View>
         </View>
 
-        {/* ── Section 2: Intensity ────────────────────────────── */}
-        <Text style={styles.sectionLabel}>Intensity</Text>
+        {/* ── Section 2: Workout Style ────────────────────────────── */}
+        <Text style={styles.sectionLabel}>Workout Style</Text>
         <View style={styles.card}>
           {isCustom ? (
             <View style={styles.customInputs}>
@@ -206,6 +207,9 @@ export default function SetupScreen({ navigation }) {
               {/* Intensity row */}
               <View style={styles.pickerRow}>
                 <Text style={styles.pickerLabel}>Intensity</Text>
+                <TouchableOpacity onPress={() => setTooltipKey('intensity')}>
+                  <Text style={styles.tooltipTrigger}>?</Text>
+                </TouchableOpacity>
                 <View style={styles.segmentRow}>
                   {INTENSITY_LABELS.map(label => (
                     <TouchableOpacity
@@ -223,7 +227,10 @@ export default function SetupScreen({ navigation }) {
 
               {/* Combo row */}
               <View style={styles.pickerRow}>
-                <Text style={styles.pickerLabel}>Combo</Text>
+                <Text style={styles.pickerLabel}>Punches</Text>
+                <TouchableOpacity onPress={() => setTooltipKey('combo')}>
+                  <Text style={styles.tooltipTrigger}>?</Text>
+                </TouchableOpacity>
                 <View style={styles.segmentRow}>
                   {COMBO_LABELS.map(label => (
                     <TouchableOpacity
@@ -280,7 +287,21 @@ export default function SetupScreen({ navigation }) {
         <TouchableOpacity style={styles.startButton} onPress={handleStart}>
           <Text style={styles.startButtonText}>START</Text>
         </TouchableOpacity>
-
+        <Modal visible={tooltipKey !== null} transparent animationType="fade">
+          <TouchableOpacity style={styles.tooltipOverlay} activeOpacity={1} onPress={() => setTooltipKey(null)}>
+            <View style={styles.tooltipBox}>
+              <View style={styles.tooltipHeader}>
+                <Text style={styles.tooltipHeaderText}>💡 Info</Text>
+              </View>
+              <Text style={styles.tooltipText}>
+                {tooltipKey === 'intensity'
+                  ? 'Intensity controls how often audio cues fire. Higher intensity means more frequent cues.'
+                  : 'Punches sets how long you have to work after each audio cue. Match it to the length of combinations you are drilling.'
+                }
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </ScrollView>
     </View>
   );
@@ -704,4 +725,37 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
   },
+  tooltipOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  justifyContent: 'center',
+  paddingHorizontal: 32,
+},
+tooltipBox: {
+  backgroundColor: '#f1f1f1',
+  borderRadius: 15,
+  padding: 20,
+  borderWidth: 1,
+  borderColor: '#D1D5DB',
+},
+tooltipText: {
+  fontSize: 15,
+  color: '#374151',
+  lineHeight: 22,
+},
+tooltipTrigger: {
+  fontSize: 13,
+  fontWeight: '600',
+  color: '#9CA3AF',
+  paddingHorizontal: 6,
+  paddingVertical: 4,
+},
+tooltipHeader: {
+  marginBottom: 10,
+},
+tooltipHeaderText: {
+  fontSize: 13,
+  fontWeight: '700',
+  color: '#5b5b5b',
+},
 });
