@@ -32,6 +32,10 @@ How to apply: Think through all options before ruling them out.
 Why: User caught that `pod install` directly is deprecated in React Native. Should use `npx expo run:ios` instead.
 How to apply: Watch for deprecation warnings in command output and update recommendations accordingly.
 
+**Treat open-ended requests as starting points — ask clarifying questions before executing.**
+Why: User often gives high-level requests ("write a README", "fix the audio bug", "rewrite this in my voice") that benefit from refinement. Jumping to action with assumptions wastes effort if the assumption is wrong, and the user has context worth surfacing before code changes happen.
+How to apply: When the request has ambiguous scope, audience, or goals, ask 1-3 specific clarifying questions first — often the cleanest form is "here are 2-3 options A/B/C with trade-offs; which do you want?" rather than abstract questions. For clearly-bounded asks ("delete file X", "add Y to the list"), just execute. The test: would a different assumption about scope or intent produce a meaningfully different output? If yes, ask. If no, do.
+
 **Debugging investigations: debug branch, commit-per-stage, squash-merge with audit.**
 Why: User got this approach from a principal SWE on 2026-05-08, superseding the earlier "experimentation out of commits" rule. Commit-per-stage gives two-way traceability between the markdown journey log (stage #) and git (commit hash) — any historical state can be reproduced. The pre-squash audit exists because the user has explicitly said they cannot always detect when Claude adds extra code beyond the fix (defensive try/catch, opportunistic refactors, leftover diagnostic helpers, abstractions added during exploration) — and they care more about a clean `dev` than convenience while iterating.
 How to apply:

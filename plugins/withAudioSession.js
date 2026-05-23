@@ -1,3 +1,6 @@
+// NOTE: always run `expo prebuild --platform ios` without --clean.
+// --clean wipes ios/ including ENABLE_USER_SCRIPT_SANDBOXING=NO in
+// project.pbxproj, which will cause the next build to fail.
 const { withAppDelegate } = require('@expo/config-plugins');
 
 const BEGIN = '// randoro-audio-session-begin';
@@ -10,7 +13,7 @@ const SWIFT_BODY = `    ${BEGIN}
       try AVAudioSession.sharedInstance().setCategory(
         .playback,
         mode: .default,
-        options: []
+        options: [.mixWithOthers]
       )
       try AVAudioSession.sharedInstance().setActive(true)
       let route = AVAudioSession.sharedInstance().currentRoute
