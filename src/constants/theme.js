@@ -15,4 +15,3 @@ export const INTENSITY_LABELS = ['Low', 'Medium', 'High'];
 export const COMBO_MAP = { '1-2': 1, '3-4': 1.5, '5-6+': 2 };
 export const COMBO_LABELS = ['1-2', '3-4', '5-6+'];
 
-export const SOUND_OPTIONS = ['ping', 'bell', 'beep', 'double'];

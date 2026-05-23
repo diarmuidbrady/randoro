@@ -16,7 +16,6 @@ import {
   INTENSITY_LABELS,
   COMBO_MAP,
   COMBO_LABELS,
-  SOUND_OPTIONS,
 } from '../constants/theme';
 import { formatTime, parseSeconds } from '../utils/time';
 import { generateWorkout } from '../utils/generator';
@@ -30,7 +29,6 @@ const DEFAULT_CONFIG = {
   cooldown: {minutes: 0, seconds: 0},
   intensity: 'Medium',
   combo: '1-2',
-  soundChoice: 'ping',
   flashEnabled: true,
   vibrationEnabled: true,
 };
@@ -46,7 +44,6 @@ export default function SetupScreen({ navigation }) {
   const [cooldown, setCooldown] = useState(DEFAULT_CONFIG.cooldown);
   const [intensity, setIntensity] = useState(DEFAULT_CONFIG.intensity);
   const [combo, setCombo] = useState(DEFAULT_CONFIG.combo);
-  const [soundChoice, setSoundChoice] = useState(DEFAULT_CONFIG.soundChoice);
   const [flashEnabled, setFlashEnabled] = useState(DEFAULT_CONFIG.flashEnabled);
   const [vibrationEnabled, setVibrationEnabled] = useState(DEFAULT_CONFIG.vibrationEnabled);
   const [tooltipKey, setTooltipKey] = useState(null); // Used to reset tooltips
@@ -84,7 +81,7 @@ export default function SetupScreen({ navigation }) {
       minGap,
     });
 
-    navigation.navigate('Running', { workout, soundChoice, flashEnabled, vibrationEnabled });
+    navigation.navigate('Running', { workout, flashEnabled, vibrationEnabled });
   };
 
   return (
@@ -206,23 +203,9 @@ export default function SetupScreen({ navigation }) {
             </View>
         </View>
 
-        {/* ── Section 3: Sound & Feedback ────────────────────── */}
-        <Text style={styles.sectionLabel}>Sound</Text>
+        {/* ── Section 3: Feedback ─────────────────────────────── */}
+        <Text style={styles.sectionLabel}>Feedback</Text>
         <View style={styles.card}>
-          <View style={styles.soundRow}>
-            {SOUND_OPTIONS.map(s => (
-              <TouchableOpacity
-                key={s}
-                style={[styles.soundButton, soundChoice === s && styles.soundButtonActive]}
-                onPress={() => setSoundChoice(s)}
-              >
-                <Text style={[styles.soundButtonText, soundChoice === s && styles.soundButtonTextActive]}>
-                  {s}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
           <View style={styles.toggleRow}>
             <Text style={styles.toggleLabel}>Screen Flash</Text>
             <Switch value={flashEnabled} onValueChange={setFlashEnabled} />
@@ -500,9 +483,9 @@ const styles = StyleSheet.create({
 
   // Intensity pickers
   pickerContainer: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    gap: 20,
   },
   pickerRow: {
     flexDirection: 'row',
@@ -523,7 +506,7 @@ const styles = StyleSheet.create({
   },
   segmentButton: {
     flex: 1,
-    paddingVertical: 7,
+    paddingVertical: 11,
     borderRadius: 8,
     borderWidth: 1.5,
     borderColor: '#D1D5DB',
@@ -541,40 +524,13 @@ const styles = StyleSheet.create({
   segmentButtonTextActive: {
     color: '#FFFFFF',
   },
-  // Sound picker
-  soundRow: {
-    flexDirection: 'row',
-    padding: 12,
-    gap: 8,
-  },
-  soundButton: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: '#D1D5DB',
-    alignItems: 'center',
-  },
-  soundButtonActive: {
-    borderColor: '#EF4444',
-    backgroundColor: '#FEF2F2',
-  },
-  soundButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  soundButtonTextActive: {
-    color: '#EF4444',
-  },
-
   // Toggles
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
   },
@@ -585,7 +541,7 @@ const styles = StyleSheet.create({
 
   // Start button
   startButton: {
-    marginTop: 28,
+    marginTop: 32,
     backgroundColor: '#111827',
     borderRadius: 14,
     paddingVertical: 18,

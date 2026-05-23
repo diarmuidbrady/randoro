@@ -34,7 +34,7 @@ const TICK_MS = 100;
 const FLASH_DURATION_MS = 300;
 
 export default function RunningScreen({ route, navigation }) {
-  const { workout, soundChoice, flashEnabled, vibrationEnabled } = route.params;
+  const { workout, flashEnabled, vibrationEnabled } = route.params;
   const { events, phases, totalDuration } = workout;
   const insets = useSafeAreaInsets();
 
