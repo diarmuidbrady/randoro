@@ -129,12 +129,9 @@ export default function SetupScreen({ navigation }) {
           <View style={styles.roundsRow}>
             <View style={styles.roundsBlock}>
               <Text style={styles.inputLabel}>Rounds</Text>
-              <TextInput
-                style={styles.roundsInput}
+              <RoundsPicker
                 value={rounds}
                 onChangeText={setRounds}
-                keyboardType="numeric"
-                maxLength={2}
               />
             </View>
 
@@ -348,6 +345,36 @@ function DurationPicker({ label, color, value, onChange, variant }) {
   );
 }
 
+function RoundsPicker({ value, onChangeText }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <View>
+      <TouchableOpacity onPress={() => setIsOpen(true)}>
+        <Text style={styles.roundsDisplay}>{value}</Text>
+      </TouchableOpacity>
+      <Modal visible={isOpen} transparent animationType="slide">
+        <View style={styles.pickerModalOverlay}>
+          <View style={styles.pickerModalSheet}>
+            <TouchableOpacity style={styles.pickerModalDone} onPress={() => setIsOpen(false)}>
+              <Text style={styles.pickerModalDoneText}>Done</Text>
+            </TouchableOpacity>
+            <Picker
+              selectedValue={Number(value)}
+              onValueChange={(v) => onChangeText(String(v))}
+              style={{ width: '100%' }}
+            >
+              {Array.from({ length: 50 }, (_, i) => i + 1).map(n => (
+                <Picker.Item key={n} label={`${n}`} value={n} />
+              ))}
+            </Picker>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -424,17 +451,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flex: 0,
   },
-  roundsInput: {
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 32,
-    fontWeight: '700',
-    width: 72,
-    textAlign: 'center',
+  roundsDisplay: {
+    fontSize: 20,
+    fontWeight: '600',
     color: '#111827',
+    textAlign: 'center',
+    paddingVertical: 4,
   },
   inputLabel: {
     fontSize: 13,
