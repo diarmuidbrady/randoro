@@ -285,7 +285,7 @@ export default function SetupScreen({ navigation }) {
 
         {/* ── Start ─────────────────────────────────────────── */}
         <TouchableOpacity style={styles.startButton} onPress={handleStart}>
-          <Text style={styles.startButtonText}>START</Text>
+          <Text style={styles.startButtonText}>ENTER</Text>
         </TouchableOpacity>
         <Modal visible={tooltipKey !== null} transparent animationType="fade">
           <TouchableOpacity style={styles.tooltipOverlay} activeOpacity={1} onPress={() => setTooltipKey(null)}>
@@ -733,7 +733,7 @@ const styles = StyleSheet.create({
 },
 tooltipBox: {
   backgroundColor: '#f1f1f1',
-  borderRadius: 15,
+  borderRadius: 20,
   padding: 20,
   borderWidth: 1,
   borderColor: '#D1D5DB',

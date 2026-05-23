@@ -276,7 +276,7 @@ export default function RunningScreen({ route, navigation }) {
           disabled={isDone}
         >
           <Text style={[styles.playButtonText, { color: fgColor }]}>
-            {isDone ? 'DONE' : isRunning ? 'PAUSE' : 'START'}
+            {isDone ? 'DONE' : isRunning ? 'PAUSE' : elapsed > 0 ? 'RESUME' : 'BEGIN'}
           </Text>
         </TouchableOpacity>
       </View>
