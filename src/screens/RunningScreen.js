@@ -11,9 +11,12 @@ import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
 // Native AppDelegate sets .playback at launch (plugins/withAudioSession.js).
 // This call sets shouldPlayInBackground=true (without it, expo-audio explicitly
-// pauses all players when the app backgrounds). interruptionMode='doNotMix'
-// matches our native options=[]; using mixWithOthers here breaks A2DP routing
-// to the Anker Soundcore A3102 speaker.
+// pauses all players when the app backgrounds). interruptionMode='duckOthers'
+// allows our audio to mix with other apps (e.g. music players) instead of
+// silencing them, and also prevents iOS from pausing our audio when a
+// notification arrives. playsInSilentMode allows audio on silent mode, which
+// is essential for the beeps to work in background on iOS. allowsRecording=false
+// is required for background audio.
 setAudioModeAsync({
   playsInSilentMode: true,
   shouldPlayInBackground: true,
@@ -56,18 +59,16 @@ export default function RunningScreen({ route, navigation }) {
   const doublePlayer     = useAudioPlayer(require('../../assets/sounds/double.wav'), playerOpts);
   const doubleRestPlayer = useAudioPlayer(require('../../assets/sounds/double_rest.wav'), playerOpts);
   const triplePlayer     = useAudioPlayer(require('../../assets/sounds/triple.wav'), playerOpts);
-  // 60 min low-amplitude 110 Hz sine, played non-looped at volume 0 while running.
-  // iOS suspends the app in background unless real audio samples flow continuously.
-  // Two non-obvious requirements: (1) no loop gap — expo-audio's loop=true has a
-  // ~100 ms gap iOS treats as "audio stopped", so we play one long file; (2) real
-  // PCM content — iOS inspects the stream after a ~5 s grace period and rejects
-  // zero-PCM as "not really playing audio". volume=0 keeps it silent to the user.
-  // See memory/project_audio_session.md.
+  // 60 min low-amplitude 110 Hz sine, played non-looped at volume 0.05 while running.
+  // Bluetooth audio routing in background and on lock screen needs constant non-zero
+  // volume — discrete beeps with gaps aren't enough. Loop=false because expo-audio's
+  // loop=true has a ~100 ms restart gap iOS treats as "audio stopped". 0.05 is below
+  // the threshold of perception in a normal room.
+  // See memory/project_audio_journey_log.md.
   const silencePlayer    = useAudioPlayer(require('../../assets/sounds/silence.wav'), playerOpts);
 
   useEffect(() => {
     silencePlayer.loop = false;
-    // Tiny non-zero output level.
     silencePlayer.volume = 0.05;
   }, [silencePlayer]);
 

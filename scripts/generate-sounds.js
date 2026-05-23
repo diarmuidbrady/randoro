@@ -13,8 +13,9 @@
  * Multi-beep files have 80 ms silence between beeps.
  *
  * Silence: low-amplitude 110 Hz drone (not actual silence) at 8 kHz to keep file
- * size down. Played non-looped at volume=0 in the app — iOS suspends the app
- * unless real audio samples flow continuously. See memory/project_audio_session.md.
+ * size down. Played non-looped at volume 0.05 in the app — Bluetooth audio routing
+ * in background and on lock screen needs constant non-zero volume.
+ * See memory/randoro_bluetooth_audio_journey_log.md.
  */
 
 const fs   = require('fs');
@@ -36,31 +37,39 @@ function buildWav(beeps) {
 
     for (let i = 0; i < n; i++) {
       let amp = 0.8 * Math.sin(2 * Math.PI * freq * i / SAMPLE_RATE);
+      // fade in
       if (i < fadeSamples) amp *= i / fadeSamples;
+      // fade out
       if (i >= n - fadeSamples) amp *= (n - i) / fadeSamples;
       pcm.push(amp);
     }
 
+    // silence gap between beeps (not after the last one)
     if (b < beeps.length - 1) {
       for (let i = 0; i < gapSamples; i++) pcm.push(0);
     }
   }
 
   const numSamples = pcm.length;
-  const dataBytes  = numSamples * 2;
+  const dataBytes  = numSamples * 2; // 16-bit = 2 bytes per sample
   const buf        = Buffer.alloc(44 + dataBytes);
 
+  // RIFF chunk
   buf.write('RIFF', 0);
   buf.writeUInt32LE(36 + dataBytes, 4);
   buf.write('WAVE', 8);
+
+  // fmt sub-chunk
   buf.write('fmt ', 12);
-  buf.writeUInt32LE(16, 16);
-  buf.writeUInt16LE(1, 20);
-  buf.writeUInt16LE(1, 22);
+  buf.writeUInt32LE(16, 16);                         // sub-chunk size
+  buf.writeUInt16LE(1, 20);                          // PCM
+  buf.writeUInt16LE(1, 22);                          // channels
   buf.writeUInt32LE(SAMPLE_RATE, 24);
-  buf.writeUInt32LE(SAMPLE_RATE * 2, 28);
-  buf.writeUInt16LE(2, 32);
-  buf.writeUInt16LE(16, 34);
+  buf.writeUInt32LE(SAMPLE_RATE * 2, 28);            // byte rate
+  buf.writeUInt16LE(2, 32);                          // block align
+  buf.writeUInt16LE(16, 34);                         // bits per sample
+
+  // data sub-chunk
   buf.write('data', 36);
   buf.writeUInt32LE(dataBytes, 40);
 
@@ -75,20 +84,25 @@ function buildWav(beeps) {
 function buildSilenceWav(durationS) {
   const sampleRate = 8000;
   const numSamples = Math.floor(sampleRate * durationS);
-  const dataBytes  = numSamples * 2;
+  const dataBytes  = numSamples * 2; // 16-bit = 2 bytes per sample
   const buf        = Buffer.alloc(44 + dataBytes);
 
+  // RIFF chunk
   buf.write('RIFF', 0);
   buf.writeUInt32LE(36 + dataBytes, 4);
   buf.write('WAVE', 8);
+
+  // fmt sub-chunk
   buf.write('fmt ', 12);
-  buf.writeUInt32LE(16, 16);
-  buf.writeUInt16LE(1, 20);
-  buf.writeUInt16LE(1, 22);
+  buf.writeUInt32LE(16, 16);                         // sub-chunk size
+  buf.writeUInt16LE(1, 20);                          // PCM
+  buf.writeUInt16LE(1, 22);                          // channels
   buf.writeUInt32LE(sampleRate, 24);
-  buf.writeUInt32LE(sampleRate * 2, 28);
-  buf.writeUInt16LE(2, 32);
-  buf.writeUInt16LE(16, 34);
+  buf.writeUInt32LE(sampleRate * 2, 28);             // byte rate
+  buf.writeUInt16LE(2, 32);                          // block align
+  buf.writeUInt16LE(16, 34);                         // bits per sample
+
+  // data sub-chunk
   buf.write('data', 36);
   buf.writeUInt32LE(dataBytes, 40);
 
