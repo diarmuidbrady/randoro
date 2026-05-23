@@ -241,12 +241,15 @@ export default function SetupScreen({ navigation }) {
           <TouchableOpacity style={styles.tooltipOverlay} activeOpacity={1} onPress={() => setTooltipKey(null)}>
             <View style={styles.tooltipBox}>
               <View style={styles.tooltipHeader}>
-                <Text style={styles.tooltipHeaderText}>💡 Info</Text>
+                <View style={styles.tooltipAccent} />
+                <Text style={styles.tooltipHeaderText}>
+                  {tooltipKey === 'intensity' ? 'Intensity' : 'Punches'}
+                </Text>
               </View>
               <Text style={styles.tooltipText}>
                 {tooltipKey === 'intensity'
-                  ? 'Intensity controls how often audio cues fire. Higher intensity means more frequent cues.'
-                  : 'Punches sets how long you have to work after each audio cue. Match it to the length of combinations you are drilling.'
+                  ? 'Controls how often audio cues fire. Higher intensity means more frequent cues.'
+                  : 'Sets how long you have to work after each cue. Match it to the combinations you are drilling.'
                 }
               </Text>
             </View>
@@ -631,36 +634,45 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   tooltipOverlay: {
-  flex: 1,
-  backgroundColor: 'rgba(0,0,0,0.5)',
-  justifyContent: 'center',
-  paddingHorizontal: 32,
-},
-tooltipBox: {
-  backgroundColor: '#f1f1f1',
-  borderRadius: 20,
-  padding: 20,
-  borderWidth: 1,
-  borderColor: '#D1D5DB',
-},
-tooltipText: {
-  fontSize: 15,
-  color: '#374151',
-  lineHeight: 22,
-},
-tooltipTrigger: {
-  fontSize: 13,
-  fontWeight: '600',
-  color: '#9CA3AF',
-  paddingHorizontal: 6,
-  paddingVertical: 4,
-},
-tooltipHeader: {
-  marginBottom: 10,
-},
-tooltipHeaderText: {
-  fontSize: 13,
-  fontWeight: '700',
-  color: '#5b5b5b',
-},
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  tooltipBox: {
+    backgroundColor: '#0b0f18',
+    borderRadius: 16,
+    padding: 20,
+  },
+  tooltipHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 8,
+  },
+  tooltipAccent: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+  },
+  tooltipHeaderText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  tooltipText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    opacity: 0.7,
+    lineHeight: 20,
+  },
+  tooltipTrigger: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+  },
 });
