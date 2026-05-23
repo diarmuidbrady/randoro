@@ -312,7 +312,7 @@ function DurationPicker({ label, color, value, onChange, variant }) {
   const display = `${String(value.minutes).padStart(2, '0')}:${String(value.seconds).padStart(2, '0')}`;
 
   const pickerModal = (
-    <Modal visible={isOpen} transparent animationType="slide">
+    <Modal visible={isOpen} transparent animationType="none">
       <View style={styles.pickerModalOverlay}>
         <View style={styles.pickerModalSheet}>
           <TouchableOpacity style={styles.pickerModalDone} onPress={() => setIsOpen(false)}>
@@ -374,7 +374,7 @@ function RoundsPicker({ value, onChangeText }) {
       <TouchableOpacity onPress={() => setIsOpen(true)}>
         <Text style={styles.roundsDisplay}>{value}</Text>
       </TouchableOpacity>
-      <Modal visible={isOpen} transparent animationType="slide">
+      <Modal visible={isOpen} transparent animationType="none">
         <View style={styles.pickerModalOverlay}>
           <View style={styles.pickerModalSheet}>
             <TouchableOpacity style={styles.pickerModalDone} onPress={() => setIsOpen(false)}>
