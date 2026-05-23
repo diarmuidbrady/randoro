@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   Switch,
   ScrollView,
@@ -31,9 +30,6 @@ const DEFAULT_CONFIG = {
   cooldown: {minutes: 0, seconds: 0},
   intensity: 'Medium',
   combo: '1-2',
-  isCustom: false,
-  customMinGap: '2.5',
-  customAvgFrequency: '5',
   soundChoice: 'ping',
   flashEnabled: true,
   vibrationEnabled: true,
@@ -50,26 +46,15 @@ export default function SetupScreen({ navigation }) {
   const [cooldown, setCooldown] = useState(DEFAULT_CONFIG.cooldown);
   const [intensity, setIntensity] = useState(DEFAULT_CONFIG.intensity);
   const [combo, setCombo] = useState(DEFAULT_CONFIG.combo);
-  const [isCustom, setIsCustom] = useState(DEFAULT_CONFIG.isCustom);
-  const [customMinGap, setCustomMinGap] = useState(DEFAULT_CONFIG.customMinGap);
-  const [customAvgFrequency, setCustomAvgFrequency] = useState(DEFAULT_CONFIG.customAvgFrequency);
   const [soundChoice, setSoundChoice] = useState(DEFAULT_CONFIG.soundChoice);
   const [flashEnabled, setFlashEnabled] = useState(DEFAULT_CONFIG.flashEnabled);
   const [vibrationEnabled, setVibrationEnabled] = useState(DEFAULT_CONFIG.vibrationEnabled);
   const [tooltipKey, setTooltipKey] = useState(null); // Used to reset tooltips
 
-  const getIntervalSettings = () => {
-    if (isCustom) {
-      return {
-        minGap: parseFloat(customMinGap) || 1,
-        avgFrequency: parseFloat(customAvgFrequency) || 5,
-      };
-    }
-    return {
-      minGap: COMBO_MAP[combo],
-      avgFrequency: INTENSITY_MAP[intensity],
-    };
-  };
+  const getIntervalSettings = () => ({
+    minGap: COMBO_MAP[combo],
+    avgFrequency: INTENSITY_MAP[intensity],
+  });
 
   const handleStart = () => {
     const work = parseSeconds(workDuration);
@@ -176,33 +161,6 @@ export default function SetupScreen({ navigation }) {
         {/* ── Section 2: Workout Style ────────────────────────────── */}
         <Text style={styles.sectionLabel}>Workout Style</Text>
         <View style={styles.card}>
-          {isCustom ? (
-            <View style={styles.customInputs}>
-              <View style={styles.customRow}>
-                <Text style={styles.customLabel}>Min gap (sec)</Text>
-                <TextInput
-                  style={styles.customInput}
-                  value={customMinGap}
-                  onChangeText={setCustomMinGap}
-                  keyboardType="decimal-pad"
-                  maxLength={4}
-                />
-              </View>
-              <View style={styles.customRow}>
-                <Text style={styles.customLabel}>Avg frequency (sec)</Text>
-                <TextInput
-                  style={styles.customInput}
-                  value={customAvgFrequency}
-                  onChangeText={setCustomAvgFrequency}
-                  keyboardType="decimal-pad"
-                  maxLength={4}
-                />
-              </View>
-              <TouchableOpacity style={styles.customToggle} onPress={() => setIsCustom(false)}>
-                <Text style={styles.customToggleText}>← Presets</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
             <View style={styles.pickerContainer}>
               {/* Intensity row */}
               <View style={styles.pickerRow}>
@@ -245,15 +203,7 @@ export default function SetupScreen({ navigation }) {
                   ))}
                 </View>
               </View>
-
-              {/* Custom link */}
-              <View style={styles.customLinkRow}>
-                <TouchableOpacity onPress={() => setIsCustom(true)}>
-                  <Text style={styles.customLinkText}>Custom</Text>
-                </TouchableOpacity>
-              </View>
             </View>
-          )}
         </View>
 
         {/* ── Section 3: Sound & Feedback ────────────────────── */}
@@ -587,51 +537,6 @@ const styles = StyleSheet.create({
   segmentButtonTextActive: {
     color: '#FFFFFF',
   },
-  customLinkRow: {
-    alignItems: 'flex-end',
-    paddingTop: 2,
-  },
-  customLinkText: {
-    fontSize: 13,
-    color: '#6B7280',
-    textDecorationLine: 'underline',
-  },
-
-  // Custom inputs
-  customInputs: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 12,
-  },
-  customRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  customLabel: {
-    fontSize: 14,
-    color: '#374151',
-  },
-  customInput: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    fontSize: 15,
-    width: 70,
-    textAlign: 'center',
-    color: '#111827',
-  },
-  customToggle: {
-    alignSelf: 'flex-start',
-  },
-  customToggleText: {
-    fontSize: 13,
-    color: '#6B7280',
-    textDecorationLine: 'underline',
-  },
-
   // Sound picker
   soundRow: {
     flexDirection: 'row',
