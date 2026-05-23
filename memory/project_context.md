@@ -4,7 +4,7 @@ description: What randoro is, current state, and active issues
 type: project
 originSessionId: 6db02655-3401-4670-a275-04d82ebca659
 ---
-Randoro is a boxing interval timer that fires random audio cues so you have to react, not anticipate. 
+Randoro is a boxing interval timer that fires random audio cues so you have to react to what you can't predict. 
 
 Used by Diarmuid to train solo and coach beginner boxing classes.
 

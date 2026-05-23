@@ -1,5 +1,5 @@
 # Randoro
-A boxing interval timer that fires random audio cues so you have to react, not anticipate
+A boxing interval timer that fires random audio cues so you have to react to what you can't predict
 
 ## Stack
 
