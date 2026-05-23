@@ -185,7 +185,7 @@ export default function SetupScreen({ navigation }) {
 
               {/* Combo row */}
               <View style={styles.pickerRow}>
-                <Text style={styles.pickerLabel}>Punches</Text>
+                <Text style={styles.pickerLabel}>Combo Count</Text>
                 <TouchableOpacity onPress={() => setTooltipKey('combo')}>
                   <Text style={styles.tooltipTrigger}>?</Text>
                 </TouchableOpacity>
@@ -243,13 +243,13 @@ export default function SetupScreen({ navigation }) {
               <View style={styles.tooltipHeader}>
                 <View style={styles.tooltipAccent} />
                 <Text style={styles.tooltipHeaderText}>
-                  {tooltipKey === 'intensity' ? 'Intensity' : 'Punches'}
+                  {tooltipKey === 'intensity' ? 'Intensity' : 'Combo Count'}
                 </Text>
               </View>
               <Text style={styles.tooltipText}>
                 {tooltipKey === 'intensity'
                   ? 'Controls how often audio cues fire. Higher intensity means more frequent cues.'
-                  : 'Sets how long you have to work after each cue. Match it to the combinations you are drilling.'
+                  : 'Controls time given to react with punch combo. Longer combos means more time.'
                 }
               </Text>
             </View>
@@ -514,6 +514,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#6B7280',
     width: 64,
+    textAlign: 'center',
   },
   segmentRow: {
     flex: 1,
