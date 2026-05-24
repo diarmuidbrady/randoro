@@ -113,7 +113,7 @@ export default function HomeScreen({ navigation }) {
 
   useEffect(() => {
     const revealed = [false, false, false, false, false, false];
-    const startTime = Date.now();
+    const startTime = Date.now() + 50;
 
     function animate() {
       const elapsed = Date.now() - startTime;
