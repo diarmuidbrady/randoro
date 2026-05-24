@@ -14,11 +14,22 @@ originSessionId: 6db02655-3401-4670-a275-04d82ebca659
 
 **RoundsPicker component:** Replaced the TextInput for rounds with a scroll wheel using the same Modal pattern as DurationPicker. State stays as a string ('3' default); Number(value) conversion happens at the Picker selectedValue prop, String(v) converts back in onValueChange. Range is 1–50. No separate component file — defined inline in SetupScreen.js alongside DurationPicker.
 
-**Intensity and Punches labels:** "Combo" axis renamed to "Punches" with options 1-2, 3-4, 5-6+ to reflect how long a boxer needs to work after each cue. COMBO_MAP keys updated to match. DEFAULT_CONFIG.combo updated to '1-2'.
+**Combo Count label:** Renamed from "Punches" to "Combo Count". Options are 1-2, 3-4, 5-6+. Tooltip text: "Controls time given to react with punch combo. Longer combos means more time." COMBO_MAP keys remain '1-2', '3-4', '5-6+'.
 
-**Info tooltips:** A single shared Modal controlled by tooltipKey state (null | 'intensity' | 'combo'). Tapping ? next to Intensity or Punches sets the key; tapping the overlay clears it. Tooltips only appear in the presets view — they're absent when Custom is active. Styling is off-white box with border. The title/header treatment needs improvement — current "💡 Info" reads generically and styling feels mismatched with the rest of the app. To revisit.
+**Info tooltips:** A single shared Modal controlled by tooltipKey state (null | 'intensity' | 'combo'). Tapping ? next to Intensity or Combo Count sets the key; tapping the overlay clears it. Dark card (#0b0f18), red accent dot, setting name header, body text opacity 0.7, overlay rgba(0,0,0,0.3). Custom workout option removed entirely — presets only.
 
-**Info tooltip design reference:** macOS notification style — dark rounded card, icon on the left (amber lightbulb on dark background in its own small box), bold title to the right of the icon, body text below. Compact, high contrast, icon and title on the same row. Worth referencing for a future tooltip redesign.
+**Sound picker removed:** soundChoice state, SOUND_OPTIONS import, and sound picker UI removed from SetupScreen. RunningScreen always uses ping sound. SOUND_OPTIONS removed from theme.js.
+
+**Home screen (HomeScreen.js):** Added as first screen in the stack navigator. Three-phase animation:
+- Phase 1: A dot (solid white circle, 10px) travels from off-screen left across the title. As it passes each static letter (r,a,n,d,o,r), the letter fades in with a 110ms delay. The dot follows a QRS-inspired heartbeat path (sine + heartbeat segments, controlled by HB_WIDTH, SINE_CYCLES, HB_AMP_MULT, HEARTBEAT_CYCLES). On landing, dot expands to 'o' size then crossfades to the settled 'o' text.
+- Phase 2: Divider appears instantly, "react" flashes (opacity 1→0.6), "to the" steps in, "unpredictable" flashes, then phase 3.
+- Phase 3: SVG border traces around the button (strokeDashoffset animation), "Get Ready" fades in.
+- Centering: invisible placeholder 'o' at position 6 gives the title row correct full width for centering.
+- Tuning constants at top of file: TRAVEL_DURATION, WAVE_START_PROGRESS, O_START_X, O_END_X, DOT_END_X_OFFSET, DOT_SIZE, DOT_TO_O_SCALE, HB_WIDTH, SINE_CYCLES, HB_AMP_MULT, HEARTBEAT_CYCLES.
+
+**Tagline:** "react to the unpredictable" — settled on after iterating through "react to what you can't predict", "react when you can't predict". Shorter and more direct.
+
+**Button language by screen:** HomeScreen → "Get Ready", SetupScreen → "ENTER", RunningScreen → "BEGIN" / "PAUSE" / "RESUME".
 
 **TestFlight workflow:** Archive in Xcode → Distribute → App Store Connect → Upload. Build number increments each archive. Version number stays at 1.0.0 until public App Store release.
 

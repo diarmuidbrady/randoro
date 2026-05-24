@@ -1,5 +1,28 @@
 # Randoro
-A boxing interval timer that fires random audio cues so you have to react to what you can't predict
+A boxing interval timer that fires random audio cues so you have to react to the unpredictable.
+
+## How it works
+
+**Home screen** — an animated dot travels across the screen, revealing the letters of "randoro" as it passes. It lands, expands into an 'o', and the tagline fades in. Tap **Get Ready** to continue.
+
+**Setup** — configure your session before starting:
+
+- **Round Structure** — set warm-up, number of rounds, work duration, rest duration, and cool-down. Tap any duration to open a scroll wheel. The swap button (↔) flips whether work or rest comes first.
+- **Workout Style** — two controls shape how the random cues fire:
+  - *Intensity* — how often cues fire. Low fires infrequently, High fires constantly.
+  - *Combo Count* — how much time you get after each cue to execute your combination. 1-2 punches gives a short window, 5-6+ gives a longer one.
+- **Feedback** — toggle screen flash and vibration on each cue.
+
+Tap **ENTER** to continue.
+
+**Running** — the screen shows the current phase (warm-up, work, rest, cool-down), a large countdown, and elapsed/remaining time. Audio cues fire at random intervals within the bounds you set. On each cue:
+- A beep plays
+- The screen flashes (if enabled)
+- The phone vibrates (if enabled)
+
+Use the arrow buttons (‹ ›) to jump between phases. Tap **PAUSE** to pause mid-round and **RESUME** to continue. Tap ✕ to end early.
+
+Audio continues in the background and on the lock screen — safe to pocket the phone mid-session.
 
 ## Stack
 
