@@ -109,8 +109,9 @@ Files under `memory/` are dual-use — written to give an AI assistant context b
 
 ## Known limitations (v1)
 
-See [TODO.md](TODO.md) for the live list. Headlines:
+See [TODO.md](TODO.md) for the full list. Headlines:
 
 - Spotify pauses briefly when Randoro is first opened; resumes during the workout setup phase.
 - First work-start beep can be inaudible at the moment Start is pressed (audio route still warming on Bluetooth speakers). Subsequent beeps play correctly.
 - Occasional glitchy beep playback observed during testing — pre-existing, root cause not isolated.
+- Splash screen / animation flicker on first open — dot briefly appears then disappears before animating.
