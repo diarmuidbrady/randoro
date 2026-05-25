@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Animated, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -6,8 +6,7 @@ import Svg, { Path } from 'react-native-svg';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const FONT_SIZE = 52;
-const TRAVEL_DURATION = 1000;
-const WAVE_START_PROGRESS = 0.20;
+const TRAVEL_DURATION = 1750;
 
 const O_START_X = -SCREEN_WIDTH * 0.65;
 const O_END_X = 0;
@@ -17,50 +16,75 @@ const DOT_SIZE = 10;
 // Scale factor to grow dot up to roughly the 'o' glyph diameter
 const DOT_TO_O_SCALE = FONT_SIZE / DOT_SIZE * 0.54; // 0.72 tunes for glyph vs font-size ratio
 
-// HB_WIDTH: fraction of wave region per heartbeat burst — increase to slow heartbeat relative to sine.
-// SINE_CYCLES: oscillations per sine segment — increase for faster sine movement.
-const HB_WIDTH = 0.23;
-const SINE_CYCLES = 0.5;
-const HB_AMP_MULT = 2;
-const HEARTBEAT_CYCLES = 1
+
+// QRS waveform segment boundaries (as fraction of total travel 0→1)
+// Flat → P → PR → Q → R → S → Flat
+// Q dips at 'n' (~0.40), R peaks at 'd' (~0.54), S ends at 'o' (~0.68)
+const SEG_P_START   = 0.08;
+const SEG_P_END     = 0.20;
+const SEG_PR_END    = 0.53;
+const SEG_Q_END     = 0.63;
+const SEG_R_END     = 0.73;
+const SEG_S_END     = 0.83;
+// remainder is flat baseline to end
+
+const AMP = 20;
+const P_HEIGHT  = AMP * 0.25;
+const R_HEIGHT  = AMP * 6.0;
+const Q_DEPTH   = AMP * 2.0;
+const S_DEPTH   = AMP * 2.0;
+
+const RED_X_START = O_START_X + SEG_PR_END * (O_END_X - O_START_X);
+const RED_X_END   = O_START_X + SEG_S_END  * (O_END_X - O_START_X);
+
+const TRAIL_LENGTH = 12;
+const DOT_COLOR_WHITE = '#FFFFFF';
+const DOT_COLOR_RED   = '#EF4444';
 
 function computeY(progress) {
-  if (progress < WAVE_START_PROGRESS) return 0;
+  const p = progress;
 
-  const AMP = 15;
-  const p = (progress - WAVE_START_PROGRESS) / (1 - WAVE_START_PROGRESS);
-
-  // Two heartbeats at ~30% and ~70% of the wave region, sine fills the gaps, flat at end.
-  // All boundaries derived from HB_WIDTH — one number controls the balance.
-  const s1End  = (0.60 - HB_WIDTH) / 2;
-  const hb1End = s1End + HB_WIDTH;
-  const s2End  = hb1End + (0.60 - HB_WIDTH) / 2;
-  const hb2End = s2End + HB_WIDTH;
-
-  const segments = [
-    { end: s1End,  type: 'sine',      cycles: SINE_CYCLES },
-    { end: hb1End, type: 'heartbeat'                      },
-    { end: s2End,  type: 'sine',      cycles: SINE_CYCLES },
-    { end: hb2End, type: 'heartbeat'                      },
-    { end: 1.00,   type: 'flat'                           },
-  ];
-
-  let segStart = 0;
-  for (const seg of segments) {
-    if (p <= seg.end) {
-      const local = (p - segStart) / (seg.end - segStart);
-      if (seg.type === 'flat') return 0;
-      if (seg.type === 'sine') {
-        return -AMP * Math.sin(local * Math.PI * 2 * seg.cycles);
-      }
-      if (seg.type === 'heartbeat') {
-        // One continuous sine wave: up → down → up, no flat gaps between peaks.
-        // sin starting at π goes: 0 → -1 → 0 → +1 → 0 over 2π, giving centre→up→centre→down→centre.
-        return -AMP * HB_AMP_MULT * Math.sin(local * Math.PI * HEARTBEAT_CYCLES + Math.PI);
-      }
-    }
-    segStart = seg.end;
+  function local(start, end) {
+    return (p - start) / (end - start);
   }
+
+  // Flat lead-in
+  if (p < SEG_P_START) return 0;
+
+  // P wave: smooth rounded bump upward (sine arch)
+  if (p < SEG_P_END) {
+    const t = local(SEG_P_START, SEG_P_END);
+    return -P_HEIGHT * Math.sin(t * Math.PI);
+  }
+
+  // PR segment: flat
+  if (p < SEG_PR_END) return 0;
+
+  // Q dip: sharp V down
+  if (p < SEG_Q_END) {
+    const t = local(SEG_PR_END, SEG_Q_END);
+    return t < 0.5
+      ? Q_DEPTH * (t / 0.5)
+      : Q_DEPTH * (1 - (t - 0.5) / 0.5);
+  }
+
+  // R peak: sharp V up
+  if (p < SEG_R_END) {
+    const t = local(SEG_Q_END, SEG_R_END);
+    return t < 0.5
+      ? -R_HEIGHT * (t / 0.5)
+      : -R_HEIGHT * (1 - (t - 0.5) / 0.5);
+  }
+
+  // S dip: sharp V down
+  if (p < SEG_S_END) {
+    const t = local(SEG_R_END, SEG_S_END);
+    return t < 0.5
+      ? S_DEPTH * (t / 0.5)
+      : S_DEPTH * (1 - (t - 0.5) / 0.5);
+  }
+
+  // Flat tail
   return 0;
 }
 
@@ -101,6 +125,8 @@ export default function HomeScreen({ navigation }) {
   const prepareOpacity = useRef(new Animated.Value(0)).current;
 
   const rafRef = useRef(null);
+  const trailBufferRef = useRef([]);
+  const [trailPositions, setTrailPositions] = useState([]);
 
   function computeRevealThresholds() {
     if (!oRestLayout.current || !letterLayouts.current.every(l => l !== null)) return;
@@ -124,6 +150,12 @@ export default function HomeScreen({ navigation }) {
       travelX.setValue(currentX);
       travelY.setValue(currentY);
 
+      const isRed = currentX >= RED_X_START && currentX <= RED_X_END;
+      const buf = trailBufferRef.current;
+      buf.push({ x: currentX, y: currentY, red: isRed });
+      if (buf.length > TRAIL_LENGTH) buf.shift();
+      setTrailPositions([...buf]);
+
       if (revealThresholdsRef.current) {
         revealThresholdsRef.current.forEach((threshold, i) => {
           if (!revealed[i] && currentX >= threshold) {
@@ -140,7 +172,34 @@ export default function HomeScreen({ navigation }) {
       if (progress < 1) {
         rafRef.current = requestAnimationFrame(animate);
       } else {
-        // Step 1: dot expands to full 'o' size
+        // Absorb trail into landing point over 300ms, then expand dot and fade out
+        const ABSORB_DURATION = 300;
+        const absorbStart = Date.now();
+        const snapshot = trailBufferRef.current.map(p => ({ ...p }));
+        const landingX = O_END_X + DOT_END_X_OFFSET;
+        const landingY = 0;
+
+        function absorbTrail() {
+          const t = Math.min((Date.now() - absorbStart) / ABSORB_DURATION, 1);
+          const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; // ease in-out
+          const absorbed = snapshot.map(p => ({
+            x: p.x + (landingX - p.x) * eased,
+            y: p.y + (landingY - p.y) * eased,
+            red: p.red,
+          }));
+          setTrailPositions(absorbed);
+
+          if (t < 1) {
+            rafRef.current = requestAnimationFrame(absorbTrail);
+          } else {
+            trailBufferRef.current = [];
+            setTrailPositions([]);
+          }
+        }
+
+        rafRef.current = requestAnimationFrame(absorbTrail);
+
+        // Step 1: dot expands to full 'o' size (runs in parallel with absorb)
         Animated.timing(dotScale, {
           toValue: DOT_TO_O_SCALE, duration: 300, useNativeDriver: true,
         }).start(() => {
@@ -226,13 +285,42 @@ export default function HomeScreen({ navigation }) {
           {/* Invisible placeholder keeps row width = "randoro" for correct centering */}
           <Animated.Text style={[styles.title, { opacity: 0 }]} onLayout={onORestLayout}>o</Animated.Text>
 
-          {/* Travelling dot: solid circle, grows on landing to match 'o' size */}
+          {/* Trail dots */}
+          {trailPositions.slice(0, -1).map((pos, i) => {
+            const age = trailPositions.length - 1 - i;
+            const opacity = Math.max(0, 1 - age / TRAIL_LENGTH);
+            const scale = Math.max(0.1, 1 - age / TRAIL_LENGTH);
+            const color = pos.red ? DOT_COLOR_RED : DOT_COLOR_WHITE;
+            return (
+              <View
+                key={i}
+                style={[styles.travellingDot, {
+                  position: 'absolute',
+                  right: 0,
+                  transform: [
+                    { translateX: pos.x + DOT_END_X_OFFSET },
+                    { translateY: pos.y },
+                    { scale },
+                  ],
+                  opacity,
+                  backgroundColor: color,
+                }]}
+              />
+            );
+          })}
+
+          {/* Travelling dot */}
           <Animated.View style={[
             styles.travellingDot,
-            { opacity: dotOpacity, transform: [...travelTransform, { translateX: DOT_END_X_OFFSET }, { scale: dotScale }] },
+            {
+              opacity: dotOpacity,
+              transform: [...travelTransform, { translateX: DOT_END_X_OFFSET }, { scale: dotScale }],
+              backgroundColor: trailPositions.length > 0 && trailPositions[trailPositions.length - 1].red
+                ? DOT_COLOR_RED : DOT_COLOR_WHITE,
+            },
           ]} />
 
-          {/* Settled 'o': fades in as dot expands, then dot disappears leaving just this */}
+          {/* Settled 'o' */}
           <Animated.Text style={[styles.title, styles.travellingO, { opacity: oOpacity, transform: travelTransform }]}>o</Animated.Text>
         </View>
 
@@ -277,6 +365,7 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
+
     </View>
   );
 }
@@ -287,15 +376,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#1C1C1E',
     paddingHorizontal: 40,
     justifyContent: 'space-between',
+    overflow: 'visible',
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'visible',
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    overflow: 'visible',
   },
   title: {
     fontSize: FONT_SIZE,
@@ -306,11 +398,11 @@ const styles = StyleSheet.create({
   travellingDot: {
     position: 'absolute',
     right: 0,
-    top: FONT_SIZE * 0.62, // Tune vertical position to sit nicely within 'o' glyph
+    top: FONT_SIZE * 0.62,
     width: DOT_SIZE,
     height: DOT_SIZE,
     borderRadius: DOT_SIZE / 2,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: DOT_COLOR_WHITE,
     alignSelf: 'center',
   },
   travellingO: {

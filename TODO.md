@@ -6,9 +6,9 @@
 
 ## App improvements
 
-- Update dot in HomeScreen animation to follow exact QRS waveform path (P, Q, R, S, T waves)
-- Animation: jet trail on dot
-- Animation: dot fades red during QRS portion
+- Animation: add heartbeat thump sound at R peak moment (progress crosses SEG_Q_END)
+- Animation: T wave — add back after P, QRS feel polished
+- Animation: SVG line trail instead of dot trail so waveform shape is visible as it draws
 
 ## Release
 
