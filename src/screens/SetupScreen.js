@@ -94,7 +94,7 @@ export default function SetupScreen({ navigation }) {
 
           {/* Warmup */}
           <View style={styles.secondaryRow}>
-            <Text style={styles.secondaryLabel}>Warm Up</Text>
+            <Text style={styles.secondaryLabel} numberOfLines={1}>Warm Up</Text>
             <View style={styles.secondaryInputWrap}>
               <DurationPicker
                 label={''}
@@ -142,7 +142,7 @@ export default function SetupScreen({ navigation }) {
 
           {/* Cooldown */}
           <View style={styles.secondaryRow}>
-            <Text style={styles.secondaryLabel}>Cool Down</Text>
+            <Text style={styles.secondaryLabel} numberOfLines={1}>Cool Down</Text>
             <View style={styles.secondaryInputWrap}>
               <DurationPicker
                 style={styles.secondaryInput}
@@ -161,7 +161,7 @@ export default function SetupScreen({ navigation }) {
             <View style={styles.pickerContainer}>
               {/* Intensity row */}
               <View style={styles.pickerRow}>
-                <Text style={styles.pickerLabel}>Intensity</Text>
+                <Text style={styles.pickerLabel} numberOfLines={1}>Intensity</Text>
                 <TouchableOpacity onPress={() => setTooltipKey('intensity')}>
                   <Text style={styles.tooltipTrigger}>?</Text>
                 </TouchableOpacity>
@@ -172,7 +172,7 @@ export default function SetupScreen({ navigation }) {
                       style={[styles.segmentButton, intensity === label && styles.segmentButtonActive]}
                       onPress={() => setIntensity(label)}
                     >
-                      <Text style={[styles.segmentButtonText, intensity === label && styles.segmentButtonTextActive]}>
+                      <Text style={[styles.segmentButtonText, intensity === label && styles.segmentButtonTextActive]} numberOfLines={1}>
                         {label}
                       </Text>
                     </TouchableOpacity>
@@ -182,7 +182,7 @@ export default function SetupScreen({ navigation }) {
 
               {/* Combo row */}
               <View style={styles.pickerRow}>
-                <Text style={styles.pickerLabel}>Combo Count</Text>
+                <Text style={styles.pickerLabel} numberOfLines={2}>Combo Count</Text>
                 <TouchableOpacity onPress={() => setTooltipKey('combo')}>
                   <Text style={styles.tooltipTrigger}>?</Text>
                 </TouchableOpacity>
@@ -193,7 +193,7 @@ export default function SetupScreen({ navigation }) {
                       style={[styles.segmentButton, combo === label && styles.segmentButtonActive]}
                       onPress={() => setCombo(label)}
                     >
-                      <Text style={[styles.segmentButtonText, combo === label && styles.segmentButtonTextActive]}>
+                      <Text style={[styles.segmentButtonText, combo === label && styles.segmentButtonTextActive]} numberOfLines={1}>
                         {label}
                       </Text>
                     </TouchableOpacity>
@@ -282,9 +282,9 @@ function DurationPicker({ label, color, value, onChange, variant }) {
   if (variant === 'peripheral') {
     return (
       <View style={styles.peripheralRow}>
-        <Text style={styles.secondaryLabel}>{label}</Text>
+        <Text style={styles.secondaryLabel} numberOfLines={1}>{label}</Text>
         <TouchableOpacity onPress={() => setIsOpen(true)}>
-          <Text style={styles.durationDisplay}>{display}</Text>
+          <Text style={styles.durationDisplay} numberOfLines={1}>{display}</Text>
         </TouchableOpacity>
         {pickerModal}
       </View>
@@ -293,9 +293,9 @@ function DurationPicker({ label, color, value, onChange, variant }) {
 
   return (
     <View style={[styles.durationBlock, { borderTopColor: color }]}>
-      <Text style={styles.durationLabel}>{label}</Text>
+      <Text style={styles.durationLabel} numberOfLines={1}>{label}</Text>
       <TouchableOpacity onPress={() => setIsOpen(true)}>
-        <Text style={styles.durationDisplay}>{display}</Text>
+        <Text style={styles.durationDisplay} numberOfLines={1}>{display}</Text>
       </TouchableOpacity>
       {pickerModal}
     </View>
@@ -308,7 +308,7 @@ function RoundsPicker({ value, onChangeText }) {
   return (
     <View>
       <TouchableOpacity onPress={() => setIsOpen(true)}>
-        <Text style={styles.roundsDisplay}>{value}</Text>
+        <Text style={styles.roundsDisplay} numberOfLines={1}>{value}</Text>
       </TouchableOpacity>
       <Modal visible={isOpen} transparent animationType="none">
         <View style={styles.pickerModalOverlay}>
