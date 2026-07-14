@@ -224,15 +224,15 @@ export default function RunningScreen({ route, navigation }) {
       {/* Top bar */}
       <View style={styles.topBar}>
         <TouchableOpacity onPress={handleStop} hitSlop={styles.hitSlop}>
-          <Text style={[styles.topBarIcon, { color: fgColor }]}>✕</Text>
+          <Text maxFontSizeMultiplier={2} style={[styles.topBarIcon, { color: fgColor }]}>✕</Text>
         </TouchableOpacity>
-        <Text style={[styles.phaseLabel, { color: fgColor }]}>{currentPhase.label}</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.phaseLabel, { color: fgColor }]}>{currentPhase.label}</Text>
         <View style={styles.hitSlop} />
       </View>
 
       {/* Large countdown */}
       <View style={styles.timerBlock}>
-        <Text style={[styles.timerText, { color: fgColor }]}>
+        <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.timerText, { color: fgColor }]}>
           {formatTime(phaseRemaining)}
         </Text>
       </View>
@@ -240,7 +240,7 @@ export default function RunningScreen({ route, navigation }) {
       {/* Round info */}
       <View style={styles.roundBlock}>
         <TouchableOpacity onPress={handlePrevPhase} hitSlop={styles.hitSlop}>
-          <Text style={[styles.arrowText, { color: fgColor }]}>‹</Text>
+          <Text maxFontSizeMultiplier={2} style={[styles.arrowText, { color: fgColor }]}>‹</Text>
         </TouchableOpacity>
         <View style={styles.roundInfo}>
           {currentPhase.type === 'work' ? (
@@ -252,19 +252,19 @@ export default function RunningScreen({ route, navigation }) {
           )}
         </View>
         <TouchableOpacity onPress={handleNextPhase} hitSlop={styles.hitSlop}>
-          <Text style={[styles.arrowText, { color: fgColor }]}>›</Text>
+          <Text maxFontSizeMultiplier={2} style={[styles.arrowText, { color: fgColor }]}>›</Text>
         </TouchableOpacity>
       </View>
 
       {/* Elapsed / Remaining */}
       <View style={styles.statsRow}>
         <View style={styles.statBlock}>
-          <Text style={[styles.statValue, { color: fgColor }]}>{formatElapsed(elapsed)}</Text>
-          <Text style={[styles.statLabel, { color: fgColor, opacity: 0.6 }]}>Elapsed</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.statValue, { color: fgColor }]}>{formatElapsed(elapsed)}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.statLabel, { color: fgColor, opacity: 0.6 }]}>Elapsed</Text>
         </View>
         <View style={styles.statBlock}>
-          <Text style={[styles.statValue, { color: fgColor }]}>{formatTime(totalRemaining)}</Text>
-          <Text style={[styles.statLabel, { color: fgColor, opacity: 0.6 }]}>Remaining</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.statValue, { color: fgColor }]}>{formatTime(totalRemaining)}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.statLabel, { color: fgColor, opacity: 0.6 }]}>Remaining</Text>
         </View>
       </View>
 
@@ -275,7 +275,7 @@ export default function RunningScreen({ route, navigation }) {
           onPress={handleStartPause}
           disabled={isDone}
         >
-          <Text style={[styles.playButtonText, { color: fgColor }]}>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.playButtonText, { color: fgColor }]}>
             {isDone ? 'DONE' : isRunning ? 'PAUSE' : elapsed > 0 ? 'RESUME' : 'BEGIN'}
           </Text>
         </TouchableOpacity>
@@ -299,9 +299,11 @@ const styles = StyleSheet.create({
   topBarIcon: {
     fontSize: 22,
     fontWeight: '300',
-    width: 32,
+    minWidth: 32,
   },
   phaseLabel: {
+    flex: 1,
+    textAlign: 'center',
     fontSize: 18,
     fontWeight: '600',
     letterSpacing: 0.5,
@@ -317,6 +319,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 16,
   },
   timerText: {
     fontSize: 88,
@@ -338,19 +341,23 @@ const styles = StyleSheet.create({
   roundInfo: {
     alignItems: 'center',
     minWidth: 160,
+    flexShrink: 1,
   },
   roundText: {
     fontSize: 17,
     fontWeight: '600',
+    textAlign: 'center',
   },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 40,
     paddingVertical: 16,
+    gap: 16,
   },
   statBlock: {
     alignItems: 'center',
+    flexShrink: 1,
   },
   statValue: {
     fontSize: 20,

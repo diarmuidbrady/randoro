@@ -126,7 +126,7 @@ export default function SetupScreen({ navigation }) {
                 <DurationPicker label="Work" value={workDuration} onChange={setWorkDuration} color="#EF4444" />
               )}
               <TouchableOpacity style={styles.swapButton} onPress={() => setRestFirst(v => !v)}>
-                <Text style={styles.swapIcon}>↔</Text>
+                <Text maxFontSizeMultiplier={2} style={styles.swapIcon}>↔</Text>
               </TouchableOpacity>
               {restFirst ? (
                 <DurationPicker label="Work" value={workDuration} onChange={setWorkDuration} color="#EF4444" 
@@ -182,7 +182,7 @@ export default function SetupScreen({ navigation }) {
 
               {/* Combo row */}
               <View style={styles.pickerRow}>
-                <Text style={styles.pickerLabel}>Combo Count</Text>
+                <Text style={styles.pickerLabel}>Combo #</Text>
                 <TouchableOpacity onPress={() => setTooltipKey('combo')}>
                   <Text style={styles.tooltipTrigger}>?</Text>
                 </TouchableOpacity>
@@ -226,7 +226,7 @@ export default function SetupScreen({ navigation }) {
               <View style={styles.tooltipHeader}>
                 <View style={styles.tooltipAccent} />
                 <Text style={styles.tooltipHeaderText}>
-                  {tooltipKey === 'intensity' ? 'Intensity' : 'Combo Count'}
+                  {tooltipKey === 'intensity' ? 'Intensity' : 'Combo #'}
                 </Text>
               </View>
               <Text style={styles.tooltipText}>
@@ -284,7 +284,7 @@ function DurationPicker({ label, color, value, onChange, variant }) {
       <View style={styles.peripheralRow}>
         <Text style={styles.secondaryLabel}>{label}</Text>
         <TouchableOpacity onPress={() => setIsOpen(true)}>
-          <Text style={styles.durationDisplay}>{display}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={styles.durationDisplay}>{display}</Text>
         </TouchableOpacity>
         {pickerModal}
       </View>
@@ -295,7 +295,7 @@ function DurationPicker({ label, color, value, onChange, variant }) {
     <View style={[styles.durationBlock, { borderTopColor: color }]}>
       <Text style={styles.durationLabel}>{label}</Text>
       <TouchableOpacity onPress={() => setIsOpen(true)}>
-        <Text style={styles.durationDisplay}>{display}</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit style={styles.durationDisplay}>{display}</Text>
       </TouchableOpacity>
       {pickerModal}
     </View>
@@ -373,6 +373,7 @@ const styles = StyleSheet.create({
   secondaryLabel: {
     fontSize: 15,
     color: '#374151',
+    flexShrink: 1,
   },
   secondaryInputWrap: {
     flexDirection: 'row',
@@ -399,6 +400,7 @@ const styles = StyleSheet.create({
   // Rounds row
   roundsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     padding: 16,
     gap: 16,
     alignItems: 'center',
@@ -428,6 +430,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    minWidth: 200,
   },
   durationBlock: {
     flex: 1,
@@ -489,6 +492,7 @@ const styles = StyleSheet.create({
   },
   pickerRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: 10,
   },
@@ -496,16 +500,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#6B7280',
-    width: 64,
+    minWidth: 64,
+    flexShrink: 1,
     textAlign: 'center',
   },
   segmentRow: {
     flex: 1,
     flexDirection: 'row',
     gap: 6,
+    minWidth: 180,
   },
   segmentButton: {
-    flex: 1,
+    flexShrink: 1,
     paddingVertical: 11,
     borderRadius: 8,
     borderWidth: 1.5,
@@ -520,6 +526,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#6B7280',
+    textAlign: 'center',
   },
   segmentButtonTextActive: {
     color: '#FFFFFF',
@@ -537,6 +544,7 @@ const styles = StyleSheet.create({
   toggleLabel: {
     fontSize: 15,
     color: '#374151',
+    flexShrink: 1,
   },
 
   // Start button

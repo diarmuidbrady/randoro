@@ -99,6 +99,17 @@ const AnimatedPath = Animated.createAnimatedComponent(Path);
 const CW_PATH  = `M ${BUTTON_W / 2} 0 L ${BUTTON_W - RADIUS} 0 A ${RADIUS} ${RADIUS} 0 0 1 ${BUTTON_W - RADIUS} ${BUTTON_H} L ${BUTTON_W / 2} ${BUTTON_H}`;
 const CCW_PATH = `M ${BUTTON_W / 2} 0 L ${RADIUS} 0 A ${RADIUS} ${RADIUS} 0 0 0 ${RADIUS} ${BUTTON_H} L ${BUTTON_W / 2} ${BUTTON_H}`;
 
+// ── Dynamic Type ──────────────────────────────────────────
+// The "randoro" wordmark and its dot animation are pixel-tuned geometry
+// (dot landing offset, dot→'o' scale ratio, ECG amplitudes are all derived
+// from FONT_SIZE). Apple's HIG treats logos/wordmarks as exempt from Dynamic
+// Type, so the wordmark is pinned at 1x to keep the animation aligned.
+const TITLE_MAX_FONT_MULTIPLIER = 1;
+// The GET READY label may scale up to 2x (40pt); the fixed 68pt SVG pill —
+// whose stroke-draw animation depends on its exact perimeter — still fits it.
+// adjustsFontSizeToFit is a safety net on narrow devices.
+const BUTTON_TEXT_MAX_FONT_MULTIPLIER = 2;
+
 const TAGLINE_WORDS = ['react', 'to', 'the', 'unpredictable'];
 const SETTLED_OPACITY = 0.6;
 const FLASH_OPACITY = 1.0;
@@ -276,14 +287,14 @@ export default function HomeScreen({ navigation }) {
       <View style={styles.content}>
 
         <View style={styles.titleRow}>
-          <Animated.Text style={[styles.title, { opacity: letterOpacities[0] }]} onLayout={e => onLetterLayout(0, e)}>r</Animated.Text>
-          <Animated.Text style={[styles.title, { opacity: letterOpacities[1] }]} onLayout={e => onLetterLayout(1, e)}>a</Animated.Text>
-          <Animated.Text style={[styles.title, { opacity: letterOpacities[2] }]} onLayout={e => onLetterLayout(2, e)}>n</Animated.Text>
-          <Animated.Text style={[styles.title, { opacity: letterOpacities[3] }]} onLayout={e => onLetterLayout(3, e)}>d</Animated.Text>
-          <Animated.Text style={[styles.title, { opacity: letterOpacities[4] }]} onLayout={e => onLetterLayout(4, e)}>o</Animated.Text>
-          <Animated.Text style={[styles.title, { opacity: letterOpacities[5] }]} onLayout={e => onLetterLayout(5, e)}>r</Animated.Text>
+          <Animated.Text maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER} style={[styles.title, { opacity: letterOpacities[0] }]} onLayout={e => onLetterLayout(0, e)}>r</Animated.Text>
+          <Animated.Text maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER} style={[styles.title, { opacity: letterOpacities[1] }]} onLayout={e => onLetterLayout(1, e)}>a</Animated.Text>
+          <Animated.Text maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER} style={[styles.title, { opacity: letterOpacities[2] }]} onLayout={e => onLetterLayout(2, e)}>n</Animated.Text>
+          <Animated.Text maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER} style={[styles.title, { opacity: letterOpacities[3] }]} onLayout={e => onLetterLayout(3, e)}>d</Animated.Text>
+          <Animated.Text maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER} style={[styles.title, { opacity: letterOpacities[4] }]} onLayout={e => onLetterLayout(4, e)}>o</Animated.Text>
+          <Animated.Text maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER} style={[styles.title, { opacity: letterOpacities[5] }]} onLayout={e => onLetterLayout(5, e)}>r</Animated.Text>
           {/* Invisible placeholder keeps row width = "randoro" for correct centering */}
-          <Animated.Text style={[styles.title, { opacity: 0 }]} onLayout={onORestLayout}>o</Animated.Text>
+          <Animated.Text maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER} style={[styles.title, { opacity: 0 }]} onLayout={onORestLayout}>o</Animated.Text>
 
           {/* Trail dots */}
           {trailPositions.slice(0, -1).map((pos, i) => {
@@ -321,7 +332,7 @@ export default function HomeScreen({ navigation }) {
           ]} />
 
           {/* Settled 'o' */}
-          <Animated.Text style={[styles.title, styles.travellingO, { opacity: oOpacity, transform: travelTransform }]}>o</Animated.Text>
+          <Animated.Text maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER} style={[styles.title, styles.travellingO, { opacity: oOpacity, transform: travelTransform }]}>o</Animated.Text>
         </View>
 
         <Animated.View style={[styles.divider, { transform: [{ scaleX: dividerScale }] }]} />
@@ -359,7 +370,12 @@ export default function HomeScreen({ navigation }) {
           />
         </Svg>
         <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Setup')}>
-          <Animated.Text style={[styles.buttonText, { opacity: prepareOpacity }]}>
+          <Animated.Text
+            maxFontSizeMultiplier={BUTTON_TEXT_MAX_FONT_MULTIPLIER}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            style={[styles.buttonText, { opacity: prepareOpacity }]}
+          >
             GET READY
           </Animated.Text>
         </TouchableOpacity>
