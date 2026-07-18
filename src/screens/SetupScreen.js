@@ -89,21 +89,19 @@ export default function SetupScreen({ navigation }) {
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: 40 + insets.bottom }]} keyboardShouldPersistTaps="handled">
 
         {/* ── Section 1: Round Structure ─────────────────────── */}
-        <Text style={styles.sectionLabel}>Round Structure</Text>
+        <Text maxFontSizeMultiplier={3} style={styles.sectionLabel}>Round Structure</Text>
         <View style={styles.card}>
 
           {/* Warmup */}
           <View style={styles.secondaryRow}>
-            <Text style={styles.secondaryLabel}>Warm Up</Text>
-            <View style={styles.secondaryInputWrap}>
-              <DurationPicker
-                label={''}
-                value={warmup}
-                onChange={setWarmup}
-                color={'#6B7280'}
-                variant={"peripheral"}
-              />
-            </View>
+            <Text maxFontSizeMultiplier={2.5} style={styles.secondaryLabel}>Warm Up</Text>
+            <DurationPicker
+              label={''}
+              value={warmup}
+              onChange={setWarmup}
+              color={'#6B7280'}
+              variant={"peripheral"}
+            />
           </View>
 
           <View style={styles.divider} />
@@ -111,7 +109,7 @@ export default function SetupScreen({ navigation }) {
           {/* Rounds + Work/Rest */}
           <View style={styles.roundsRow}>
             <View style={styles.roundsBlock}>
-              <Text style={styles.inputLabel}>Rounds</Text>
+              <Text maxFontSizeMultiplier={3} numberOfLines={1} style={styles.inputLabel}>Rounds</Text>
               <RoundsPicker
                 value={rounds}
                 onChangeText={setRounds}
@@ -142,21 +140,19 @@ export default function SetupScreen({ navigation }) {
 
           {/* Cooldown */}
           <View style={styles.secondaryRow}>
-            <Text style={styles.secondaryLabel}>Cool Down</Text>
-            <View style={styles.secondaryInputWrap}>
-              <DurationPicker
-                style={styles.secondaryInput}
-                value={cooldown}
-                onChange={setCooldown}
-                color={'#6B7280'}
-                variant={"peripheral"}
-              />
-            </View>
+            <Text maxFontSizeMultiplier={2.5} style={styles.secondaryLabel}>Cool Down</Text>
+            <DurationPicker
+              style={styles.secondaryInput}
+              value={cooldown}
+              onChange={setCooldown}
+              color={'#6B7280'}
+              variant={"peripheral"}
+            />
           </View>
         </View>
 
         {/* ── Section 2: Workout Style ────────────────────────────── */}
-        <Text style={styles.sectionLabel}>Workout Style</Text>
+        <Text maxFontSizeMultiplier={3} style={styles.sectionLabel}>Workout Style</Text>
         <View style={styles.card}>
             <View style={styles.pickerContainer}>
               {/* Intensity row */}
@@ -172,7 +168,10 @@ export default function SetupScreen({ navigation }) {
                       style={[styles.segmentButton, intensity === label && styles.segmentButtonActive]}
                       onPress={() => setIntensity(label)}
                     >
-                      <Text style={[styles.segmentButtonText, intensity === label && styles.segmentButtonTextActive]}>
+                      <Text 
+                      numberOfLines={1}
+                      maxFontSizeMultiplier={2.5}
+                      style={[styles.segmentButtonText, intensity === label && styles.segmentButtonTextActive]}>
                         {label}
                       </Text>
                     </TouchableOpacity>
@@ -193,7 +192,10 @@ export default function SetupScreen({ navigation }) {
                       style={[styles.segmentButton, combo === label && styles.segmentButtonActive]}
                       onPress={() => setCombo(label)}
                     >
-                      <Text style={[styles.segmentButtonText, combo === label && styles.segmentButtonTextActive]}>
+                      <Text 
+                      numberOfLines={1}
+                      maxFontSizeMultiplier={2.5}
+                      style={[styles.segmentButtonText, combo === label && styles.segmentButtonTextActive]}>
                         {label}
                       </Text>
                     </TouchableOpacity>
@@ -204,7 +206,7 @@ export default function SetupScreen({ navigation }) {
         </View>
 
         {/* ── Section 3: Feedback ─────────────────────────────── */}
-        <Text style={styles.sectionLabel}>Feedback</Text>
+        <Text maxFontSizeMultiplier={3} style={styles.sectionLabel}>Feedback</Text>
         <View style={styles.card}>
           <View style={styles.toggleRow}>
             <Text style={styles.toggleLabel}>Screen Flash</Text>
@@ -281,21 +283,18 @@ function DurationPicker({ label, color, value, onChange, variant }) {
 
   if (variant === 'peripheral') {
     return (
-      <View style={styles.peripheralRow}>
-        <Text style={styles.secondaryLabel}>{label}</Text>
-        <TouchableOpacity onPress={() => setIsOpen(true)}>
-          <Text numberOfLines={1} adjustsFontSizeToFit style={styles.durationDisplay}>{display}</Text>
-        </TouchableOpacity>
+      <TouchableOpacity style={styles.peripheralValue} onPress={() => setIsOpen(true)}>
+        <Text numberOfLines={1} adjustsFontSizeToFit style={styles.durationDisplay}>{display}</Text>
         {pickerModal}
-      </View>
+      </TouchableOpacity>
     );
   }
 
   return (
     <View style={[styles.durationBlock, { borderTopColor: color }]}>
-      <Text style={styles.durationLabel}>{label}</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.durationLabel]}>{label}</Text>
       <TouchableOpacity onPress={() => setIsOpen(true)}>
-        <Text numberOfLines={1} adjustsFontSizeToFit style={styles.durationDisplay}>{display}</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.durationDisplay]}>{display}</Text>
       </TouchableOpacity>
       {pickerModal}
     </View>
@@ -308,7 +307,9 @@ function RoundsPicker({ value, onChangeText }) {
   return (
     <View>
       <TouchableOpacity onPress={() => setIsOpen(true)}>
-        <Text style={styles.roundsDisplay}>{value}</Text>
+        <Text numberOfLines={1} maxFontSizeMultiplier={2.5} style={styles.roundsDisplay}>
+          {value}
+        </Text>
       </TouchableOpacity>
       <Modal visible={isOpen} transparent animationType="none">
         <View style={styles.pickerModalOverlay}>
@@ -373,7 +374,7 @@ const styles = StyleSheet.create({
   secondaryLabel: {
     fontSize: 15,
     color: '#374151',
-    flexShrink: 1,
+    flex: 4,
   },
   secondaryInputWrap: {
     flexDirection: 'row',
@@ -507,11 +508,14 @@ const styles = StyleSheet.create({
   segmentRow: {
     flex: 1,
     flexDirection: 'row',
+    justifyContent: 'space-between',
     gap: 6,
     minWidth: 180,
   },
   segmentButton: {
+    flexGrow: 1,
     flexShrink: 1,
+    flexBasis: 'auto',
     paddingVertical: 11,
     borderRadius: 8,
     borderWidth: 1.5,
@@ -544,7 +548,6 @@ const styles = StyleSheet.create({
   toggleLabel: {
     fontSize: 15,
     color: '#374151',
-    flexShrink: 1,
   },
 
   // Start button
@@ -569,11 +572,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
+  peripheralValue: {
+    flex: 1,
+  },
   durationDisplay: {
     fontSize: 20,
     fontWeight: '600',
     color: '#111827',
     paddingVertical: 4,
+    textAlign: 'right',
   },
   pickerModalOverlay: {
     flex: 1,

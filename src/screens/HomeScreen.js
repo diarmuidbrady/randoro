@@ -341,6 +341,8 @@ export default function HomeScreen({ navigation }) {
           {TAGLINE_WORDS.map((word, i) => (
             <Animated.Text
               key={word}
+              numberOfLines={1}
+              maxFontSizeMultiplier={2.5}
               style={[styles.taglineWord, { opacity: wordOpacities[i] }]}
             >
               {word}{i < 3 ? ' ' : ''}
