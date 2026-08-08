@@ -25,6 +25,33 @@ const SAMPLE_RATE = 44100;
 const FADE_S      = 0.02;   // 20 ms fade at each end of a beep
 const GAP_S       = 0.08;   // 80 ms silence between beeps
 
+// A pure sine reads as quiet: all its energy sits at one frequency and its
+// average (RMS) level is low relative to its peak. Summing odd harmonics
+// (fundamental + 3rd + 5th + 7th) builds a brighter, square-ish tone that
+// packs far more energy at the same peak, and lands that energy in the
+// 2–4 kHz band where the ear is most sensitive so it sounds much louder
+// without ever exceeding full scale.
+const HARMONICS = [
+  { mult: 1, gain: 1.00 },
+  { mult: 3, gain: 0.31 },
+  { mult: 5, gain: 0.15 },
+  { mult: 7, gain: 0.10 },
+];
+
+const PEAK = 0.97; // normalize the summed tone to just under full scale (1.0)
+
+// Sum of the harmonic gains = the worst-case peak of the raw (unnormalized) tone.
+const HARMONIC_SUM = HARMONICS.reduce((sum, h) => sum + h.gain, 0);
+
+// One sample of the harmonic-rich tone at sample index i, before normalization.
+function tone(freq, i) {
+  let v = 0;
+  for (const h of HARMONICS) {
+    v += h.gain * Math.sin(2 * Math.PI * freq * h.mult * i / SAMPLE_RATE);
+  }
+  return v;
+}
+
 function buildWav(beeps) {
   const fadeSamples = Math.floor(SAMPLE_RATE * FADE_S);
   const gapSamples  = Math.floor(SAMPLE_RATE * GAP_S);
@@ -36,7 +63,7 @@ function buildWav(beeps) {
     const n = Math.floor(SAMPLE_RATE * duration);
 
     for (let i = 0; i < n; i++) {
-      let amp = 0.8 * Math.sin(2 * Math.PI * freq * i / SAMPLE_RATE);
+      let amp = (PEAK / HARMONIC_SUM) * tone(freq, i);
       // fade in
       if (i < fadeSamples) amp *= i / fadeSamples;
       // fade out
@@ -120,10 +147,11 @@ const outDir = path.join(__dirname, '..', 'assets', 'sounds');
 fs.mkdirSync(outDir, { recursive: true });
 
 const files = {
-  'ping.wav':        [{ freq: 750, duration: 0.15 }],
-  'double.wav':      [{ freq: 750, duration: 0.15 }, { freq: 750, duration: 0.15 }],
-  'double_rest.wav': [{ freq: 500, duration: 0.30 }, { freq: 500, duration: 0.30 }],
-  'triple.wav':      [{ freq: 750, duration: 0.15 }, { freq: 750, duration: 0.15 }, { freq: 750, duration: 0.15 }],
+  'ping.wav':        [ { freq: 750, duration: 0.10 } ],
+  'double.wav':      [ { freq: 625, duration: 0.10 }, { freq: 625, duration: 0.10 } ],
+  'double_rest.wav': [ { freq: 500, duration: 0.20 }, { freq: 500, duration: 0.20 } ],
+  'warmup.wav':      [ { freq: 500, duration: 0.20 }, { freq: 510, duration: 0.15 }, { freq: 600, duration: 0.10 } ],
+  'cooldown.wav':    [ { freq: 600, duration: 0.20 }, { freq: 500, duration: 0.15 }, { freq: 500, duration: 0.10 } ],
 };
 
 for (const [name, beeps] of Object.entries(files)) {

@@ -21,12 +21,12 @@ import { formatTime, parseSeconds } from '../utils/time';
 import { generateWorkout } from '../utils/generator';
 
 const DEFAULT_CONFIG = {
-  warmup: {minutes: 0, seconds: 0},
+  warmup: {minutes: 0, seconds: 5},
   rounds: '3',
   workDuration: {minutes: 3, seconds: 0},
   restDuration: {minutes: 1, seconds: 0},
   restFirst: false,
-  cooldown: {minutes: 0, seconds: 0},
+  cooldown: {minutes: 0, seconds: 5},
   intensity: 'Medium',
   combo: '1-2',
   flashEnabled: true,

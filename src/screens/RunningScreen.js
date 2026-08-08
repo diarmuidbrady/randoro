@@ -11,7 +11,7 @@ import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
 // Native AppDelegate sets .playback at launch (plugins/withAudioSession.js).
 // This call sets shouldPlayInBackground=true (without it, expo-audio explicitly
-// pauses all players when the app backgrounds). interruptionMode='duckOthers'
+// pauses all players when the app backgrounds). interruptionMode='mixWithOthers'
 // allows our audio to mix with other apps (e.g. music players) instead of
 // silencing them, and also prevents iOS from pausing our audio when a
 // notification arrives. playsInSilentMode allows audio on silent mode, which
@@ -21,7 +21,7 @@ setAudioModeAsync({
   playsInSilentMode: true,
   shouldPlayInBackground: true,
   allowsRecording: false,
-  interruptionMode: 'duckOthers',
+  interruptionMode: 'mixWithOthers',
 }).catch(() => {});
 
 import * as Haptics from 'expo-haptics';
@@ -58,7 +58,8 @@ export default function RunningScreen({ route, navigation }) {
   const pingPlayer       = useAudioPlayer(require('../../assets/sounds/ping.wav'), playerOpts);
   const doublePlayer     = useAudioPlayer(require('../../assets/sounds/double.wav'), playerOpts);
   const doubleRestPlayer = useAudioPlayer(require('../../assets/sounds/double_rest.wav'), playerOpts);
-  const triplePlayer     = useAudioPlayer(require('../../assets/sounds/triple.wav'), playerOpts);
+  const warmupPlayer     = useAudioPlayer(require('../../assets/sounds/warmup.wav'), playerOpts);
+  const cooldownPlayer   = useAudioPlayer(require('../../assets/sounds/cooldown.wav'), playerOpts);
   // 60 min low-amplitude 110 Hz sine, played non-looped at volume 0.05 while running.
   // Bluetooth audio routing in background and on lock screen needs constant non-zero
   // volume — discrete beeps with gaps aren't enough. Loop=false because expo-audio's
@@ -107,8 +108,9 @@ export default function RunningScreen({ route, navigation }) {
   const playerForPhaseType = useCallback((type) => {
     if (type === 'work')     return doublePlayer;
     if (type === 'rest')     return doubleRestPlayer;
-    return triplePlayer; // warmup, cooldown, done
-  }, [doublePlayer, doubleRestPlayer, triplePlayer]);
+    if (type === 'warmup')   return warmupPlayer;
+    return cooldownPlayer; // done
+  }, [doublePlayer, doubleRestPlayer, warmupPlayer, cooldownPlayer]);
 
   // ── Flash helper ──────────────────────────────────────────
   const triggerFlash = useCallback(() => {
@@ -146,7 +148,7 @@ export default function RunningScreen({ route, navigation }) {
 
     if (phaseEvents.some(e => e.type === 'done')) {
       clearInterval(intervalRef.current);
-      if (!isCatchUp) playSound(triplePlayer);
+      if (!isCatchUp) playSound(cooldownPlayer);
       setElapsed(totalDuration);
       setIsRunning(false);
       setIsDone(true);
@@ -159,8 +161,8 @@ export default function RunningScreen({ route, navigation }) {
       for (const e of phaseEvents) {
         if (e.type === 'round_start')         playSound(doublePlayer);
         else if (e.type === 'rest_start')     playSound(doubleRestPlayer);
-        else if (e.type === 'warmup_start')   playSound(triplePlayer);
-        else if (e.type === 'cooldown_start') playSound(triplePlayer);
+        else if (e.type === 'warmup_start')   playSound(warmupPlayer);
+        else if (e.type === 'cooldown_start') playSound(cooldownPlayer);
       }
     }
 
@@ -168,7 +170,7 @@ export default function RunningScreen({ route, navigation }) {
     setElapsed(current);
   }, [
     events, totalDuration, vibrationEnabled,
-    pingPlayer, doublePlayer, doubleRestPlayer, triplePlayer,
+    pingPlayer, doublePlayer, doubleRestPlayer, warmupPlayer, cooldownPlayer,
     playSound, triggerFlash,
   ]);
 
