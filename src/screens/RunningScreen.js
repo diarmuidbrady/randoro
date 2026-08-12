@@ -187,6 +187,11 @@ export default function RunningScreen({ route, navigation }) {
     if (!isRunning) {
       startTimeRef.current = Date.now();
       lastTickWallTimeRef.current = null; // reset so resume doesn't look like catch-up
+      // Resuming at the start of a phase (e.g. after jumping phases while paused)
+      // plays that phase's start sound, deferred from the silent paused jump.
+      if (elapsed === currentPhase.start) {
+        playSound(playerForPhaseType(currentPhase.type));
+      }
       setIsRunning(true);
     } else {
       clearInterval(intervalRef.current);
@@ -207,8 +212,10 @@ export default function RunningScreen({ route, navigation }) {
     pausedElapsedRef.current = targetTime;
     lastEventElapsedRef.current = targetTime;
     setElapsed(targetTime);
-    if (isRunning) startTimeRef.current = Date.now();
-    playSound(playerForPhaseType(targetPhase.type));
+    if (isRunning) {
+      startTimeRef.current = Date.now();
+      playSound(playerForPhaseType(targetPhase.type));
+    }
   }, [phases, isRunning, playSound, playerForPhaseType]);
 
   const currentPhaseIndex = phases.indexOf(currentPhase);
