@@ -41,5 +41,4 @@ yarn-error.*
 /android
 
 # sound files
-assets/sounds/
-assets/sounds old/
+assets/sounds*

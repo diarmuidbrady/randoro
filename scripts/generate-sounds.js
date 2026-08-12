@@ -38,10 +38,7 @@ const HARMONICS = [
   { mult: 7, gain: 0.10 },
 ];
 
-const PEAK = 0.97; // normalize the summed tone to just under full scale (1.0)
-
-// Sum of the harmonic gains = the worst-case peak of the raw (unnormalized) tone.
-const HARMONIC_SUM = HARMONICS.reduce((sum, h) => sum + h.gain, 0);
+const PEAK = 0.97; // target true peak of the final WAV, just under full scale (1.0)
 
 // One sample of the harmonic-rich tone at sample index i, before normalization.
 function tone(freq, i) {
@@ -63,7 +60,7 @@ function buildWav(beeps) {
     const n = Math.floor(SAMPLE_RATE * duration);
 
     for (let i = 0; i < n; i++) {
-      let amp = (PEAK / HARMONIC_SUM) * tone(freq, i);
+      let amp = tone(freq, i);
       // fade in
       if (i < fadeSamples) amp *= i / fadeSamples;
       // fade out
@@ -75,6 +72,19 @@ function buildWav(beeps) {
     if (b < beeps.length - 1) {
       for (let i = 0; i < gapSamples; i++) pcm.push(0);
     }
+  }
+
+  // Peak-normalize to the true measured peak (not the theoretical harmonic sum,
+  // which overshoots because the harmonics never all crest on the same sample).
+  // Scaling by PEAK / actualPeak lands the loudest sample exactly at PEAK.
+  let actualPeak = 0;
+  for (let i = 0; i < pcm.length; i++) {
+    const a = Math.abs(pcm[i]);
+    if (a > actualPeak) actualPeak = a;
+  }
+  if (actualPeak > 0) {
+    const scale = PEAK / actualPeak;
+    for (let i = 0; i < pcm.length; i++) pcm[i] *= scale;
   }
 
   const numSamples = pcm.length;
