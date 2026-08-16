@@ -32,15 +32,22 @@ How to apply: Think through all options before ruling them out.
 Why: User caught that `pod install` directly is deprecated in React Native. Should use `npx expo run:ios` instead.
 How to apply: Watch for deprecation warnings in command output and update recommendations accordingly.
 
-**Treat open-ended requests as starting points — ask clarifying questions before executing.**
-Why: User often gives high-level requests ("write a README", "fix the audio bug", "rewrite this in my voice") that benefit from refinement. Jumping to action with assumptions wastes effort if the assumption is wrong, and the user has context worth surfacing before code changes happen.
-How to apply: When the request has ambiguous scope, audience, or goals, ask 1-3 specific clarifying questions first — often the cleanest form is "here are 2-3 options A/B/C with trade-offs; which do you want?" rather than abstract questions. For clearly-bounded asks ("delete file X", "add Y to the list"), just execute. The test: would a different assumption about scope or intent produce a meaningfully different output? If yes, ask. If no, do.
+**Don't add the "Co-Authored-By: Claude" line to commit messages.**
+Why: User explicitly rejected it when committing.
+How to apply: Omit the co-author trailer from all commit messages for this user unless they ask for it back.
 
-**Debugging investigations: debug branch, commit-per-stage, squash-merge with audit.**
-Why: User got this approach from a principal SWE on 2026-05-08, superseding the earlier "experimentation out of commits" rule. Commit-per-stage gives two-way traceability between the markdown journey log (stage #) and git (commit hash) — any historical state can be reproduced. The pre-squash audit exists because the user has explicitly said they cannot always detect when Claude adds extra code beyond the fix (defensive try/catch, opportunistic refactors, leftover diagnostic helpers, abstractions added during exploration) — and they care more about a clean `dev` than convenience while iterating.
-How to apply:
-1. **Branch off dev.** `git checkout -b debug/<short-name>`.
-2. **Per-stage commit.** Each stage in the journey log = one commit. Message format: `"stage NN: <short title> — see notes #NN"`. After committing, paste the commit hash back into the stage under a `**Commit.**` label so notes ↔ git is bidirectional.
-3. **Minimal diffs while iterating.** Do not refactor, extract helpers, or introduce abstractions beyond what the current test requires. Diagnostic code (DIAGNOSTIC comments, audible drones, console.log, temporary scripts) must be reverted before the final commit on the branch. Defensive try/catch added only for Fast Refresh or other dev-only conditions does NOT belong in production code.
-4. **Pre-squash audit.** Before merging to dev, run `git diff dev...debug/<name>` as a unified diff and walk through every changed line with the user. Each addition must justify itself as required for the fix. Be skeptical of: leftover diagnostic code, dev-only defensive code, opportunistic refactors, abstractions added during exploration. Anything not strictly required gets removed before the squash.
-5. **Squash-merge to dev.** One clean commit summarizing the fix. Do NOT delete the debug branch — it's the canonical record alongside the markdown journey log.
+**When testing a layout/styling fix, isolate one change at a time rather than batching multiple fixes.**
+Why: User asked to see the effect of `numberOfLines` alone before considering flex/width changes, to keep a clear mental model of which change caused which effect.
+How to apply: For UI/styling debugging, apply and test one type of change, get feedback, then move to the next — don't bundle fixes preemptively.
+
+**Drop validating language ("you're right", "good call", "that makes sense") — it's frustrating to listen to.**
+Why: User explicitly said stop validating what he's doing; work productively and supportively instead, without the affirming preamble.
+How to apply: Skip the agreement/praise sentence at the start of replies. Go straight to the content, action, or instructions.
+
+**For iterative style/layout tuning, give written instructions for the user to apply themselves rather than making edit after edit.**
+Why: User wants to play with values directly and review the diff afterward, rather than a back-and-forth of edits that get rejected/flip-flopped.
+How to apply: When tuning is exploratory (font sizes, spacing, flex values), describe what to change and why, let the user make the edit, then review.
+
+**Fixed `fontSize` values are fine and expected with Dynamic Type — don't avoid them.**
+Why: User corrected the claim that fixed font sizes "don't work" with Dynamic Type. The actual requirement is that containers around text use flexible width/height (flex, minWidth) so they can absorb the scaled text, not that font sizes themselves must vary.
+How to apply: When fixing Dynamic Type layout bugs, focus on container flex/width, not on second-guessing every fontSize value.

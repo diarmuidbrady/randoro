@@ -22,11 +22,11 @@ Tap **ENTER** to continue.
 
 Use the arrow buttons (‹ ›) to jump between phases. Tap **PAUSE** to pause mid-round and **RESUME** to continue. Tap ✕ to end early.
 
-Audio continues in the background and on the lock screen — safe to pocket the phone mid-session.
+Audio continues in the background and on the lock screen, so it's safe to pocket the phone mid-session.
 
 ## Stack
 
-React Native + Expo (SDK 54). iOS only — Android untested.
+React Native + Expo (SDK 54). iOS only. Android untested.
 
 ## Running locally
 
@@ -64,19 +64,19 @@ npx expo run:ios --device
 
 ### Expo Go vs the dev build
 
-Randoro depends on native modules — notably `@react-native-picker/picker` (the
+Randoro depends on native modules, notably `@react-native-picker/picker` (the
 duration and rounds scroll wheels) and the AVAudioSession plugin. **These do not
 work in Expo Go.** The picker wheels render as blank grey rows, and background
 audio routing won't behave correctly.
 
 Always run the app through the **dev build** produced by `npx expo run:ios`, not
 Expo Go. Once the dev build is installed, `npx expo start` can serve JS reloads
-to it for pure-JS changes (layout, styling, animations) — but you must open the
+to it for pure-JS changes (layout, styling, animations). But you must open the
 **dev build** app on the device, not Expo Go. They look identical; only the dev
 build has the native modules.
 
-If the picker wheels show empty grey rows, you're running in the wrong runtime —
-it's not a code bug. Delete Expo Go from the device to avoid connecting to it by
+If the picker wheels show empty grey rows, you're running in the wrong runtime.
+It's not a code bug. Delete Expo Go from the device to avoid connecting to it by
 accident.
 
 ## Project structure
@@ -88,6 +88,7 @@ index.js               Registers the root component
 
 src/
   screens/
+    HomeScreen.js      Animated landing screen (dot reveals "randoro", then Get Ready)
     SetupScreen.js     Workout configuration (rounds, work/rest duration, intensity, combo)
     RunningScreen.js   Workout execution with audio cues
   utils/
@@ -103,12 +104,15 @@ scripts/
   generate-sounds.js   Generates beep WAVs and the silence track
 
 assets/sounds/         Generated WAV files (silence.wav is ~57 MB)
-memory/                AI assistant context files (human-readable)
+memory/                AI assistant context files (human-readable mirror)
+
+TODO.md                Feature ideas, bugs, release tasks
+USER_NEEDS.md          User needs behind the features
 ```
 
 ## Sound assets
 
-Four beep files (`ping`, `double`, `double_rest`, `triple`) generated at 44.1 kHz, 16-bit, mono PCM. The silence track is 60 minutes of low-amplitude 110 Hz sine at 8 kHz mono (~57 MB), played non-looped at low volume alongside the beeps. It keeps iOS's audio engine producing continuous samples — required for background-mode beeps to fire and to hold the A2DP route open on Bluetooth speakers.
+Beep files (`ping`, `double`, `double_rest`, `warmup`, `cooldown`) generated at 44.1 kHz, 16-bit, mono PCM. Each is a harmonic-rich tone (odd harmonics over the fundamental) for perceived loudness, normalised to its true measured peak. The silence track is 60 minutes of low-amplitude 110 Hz sine at 8 kHz mono (~57 MB), played non-looped at low volume alongside the beeps. It keeps iOS's audio engine producing continuous samples, required for background-mode beeps to fire and to hold the A2DP route open on Bluetooth speakers.
 
 Regenerate when the script changes:
 
@@ -116,19 +120,22 @@ Regenerate when the script changes:
 node scripts/generate-sounds.js
 ```
 
-## Documentation
+## Navigating this repo
 
-Files under `memory/` are dual-use — written to give an AI assistant context between sessions, but all human-readable.
+Top-level docs:
 
-- [memory/project_context.md](memory/project_context.md) — what Randoro is, broad current direction
-- [memory/project_technical.md](memory/project_technical.md) — stack and key technical decisions
-- [memory/randoro_bluetooth_audio_journey_log.md](memory/randoro_bluetooth_audio_journey_log.md) — full chronological record of the Bluetooth audio + background mode investigation
+- [TODO.md](TODO.md) — distilled feature ideas, known bugs, and release tasks. Concise and processed, not a running log.
+- [USER_NEEDS.md](USER_NEEDS.md) — the user needs behind the features. Kept separate so we solve problems, not just ship suggestions. Includes a dated list of user calls.
+
+The `memory/` folder is dual-use: context written for an AI assistant between sessions, but all human-readable. It is a published mirror of the assistant's live memory, updated when things change. Start with the index:
+
+- [memory/MEMORY.md](memory/MEMORY.md) — index of all memory files, grouped into living / about-the-user / reference.
+- [memory/project_context.md](memory/project_context.md) — what Randoro is, current state, direction.
+- [memory/project_technical.md](memory/project_technical.md) — stack and key technical decisions.
+- [memory/project_audio_journey_log.md](memory/project_audio_journey_log.md) — full chronological record of the Bluetooth + background audio investigation.
 
 ## Known limitations (v1)
 
 See [TODO.md](TODO.md) for the full list. Headlines:
 
-- Spotify pauses briefly when Randoro is first opened; resumes during the workout setup phase.
-- First work-start beep can be inaudible at the moment Start is pressed (audio route still warming on Bluetooth speakers). Subsequent beeps play correctly.
-- Occasional glitchy beep playback observed during testing — pre-existing, root cause not isolated.
-- Splash screen / animation flicker on first open — dot briefly appears then disappears before animating.
+- Spotify pauses when Randoro is opened. The user must resume it to continue listening.

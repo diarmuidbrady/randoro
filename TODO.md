@@ -1,39 +1,40 @@
 # TODO
 
+Feature ideas and known work, distilled and concise. The user needs behind these live in [USER_NEEDS.md](USER_NEEDS.md). The guiding constraint on every feature: keep it simple, a user should start a workout in a few clicks.
+
 ## Bugs
+- N/A
 
-- **Splash screen / animation flicker**: With `startTime + 500` delay in HomeScreen.js, the dot briefly appears at the left edge before disappearing, then re-appears and travels. Root cause: one RAF frame renders before the delay fires. Fix: gate the first RAF frame behind the same delay, or initialise dot opacity to 0 and only show it when the animation actually starts.
-- **Setup screen: "Intensity" label wraps to second line on iPhone 16 with zoomed display.** Likely a font size / layout constraint issue. Fix: implement responsive text sizing or tighten the label layout so it fits at larger system font sizes.
+## Feature ideas
 
-## App improvements
+### Round structure
+- **Countdown into a work round:** when the next round is a Work round, play prompt beeps at 10 seconds, then at 5, 4, 3, 2, and 1 second before it starts.
+- **Round modes:** self-directed (beeps only, current), guided (beeps + called combinations), free (no beeps, athlete chooses when to punch — usable as a finisher or as a plain interval timer).
+- **Varying intensity within a round:** e.g. high first minute, moderate second, high third to finish.
+- **Workout presets:** named starting points, e.g. "3x3 Amateur Fight" (high intensity), "10x3 Professional" (moderate–high). Less to configure before starting.
+- **Frequency / Attacks / Manual tabs:** three ways to set round difficulty. Frequency = wait time in seconds; Attacks = number of attacks; aligned low/med/high presets across both. Manual for custom.
+
+### Guided training
+- **Opponent type:** choose an opponent (opposite stance orthodox/southpaw, aggressive, tall/long, short/small) that shapes the round.
+- **Guided mode:** a pre-round guide (choose opponent, read before starting) plus a choice of output — beeps or spoken prompts.
+- **Voice / spoken prompts:** spoken cues instead of beeps, valuable for bag work where gloves prevent touching the phone.
+- **Skill selection (on-cue and between-cue):** pick what to do on the cue (e.g. throw 1-2-1) and what to work on between cues (e.g. feints, footwork, defence). The gap between cues matters as much as the cue.
+- **Explainer content:** short instructions or video for each skill, so users picking skills know how to perform them.
 
 ### Animation
-- Make dot and jet trail thinner
-- Jet trail should span ~25% of screen width
-- Jet trail should be smoother — increase number of trail points to reduce gaps between circles, closer to a continuous comet trail
-- Add heartbeat thump sound at R peak moment (progress crosses SEG_Q_END)
-- T wave — add back after P, QRS feel polished
-- SVG line trail instead of dot trail so waveform shape is visible as it draws
+- Make dot and jet trail thinner.
+- Jet trail should span ~25% of screen width.
+- Jet trail should be smoother — more trail points, closer to a continuous comet trail.
+- Add heartbeat thump sound at the R peak moment.
+- Add the T wave back once P and QRS feel polished.
+- SVG line trail instead of dot trail, so the waveform shape is visible as it draws.
 
-### Sport presets (future)
-- Current UI is boxing-specific. Other sports (hurling, running) expressed interest. Consider sport-specific presets and setup screen variants. Start with boxing as default, expand later.
+### Music
+- Control Spotify or a preferred music app from within Randoro without leaving the app.
 
-### Coaching features (boxing coaches feedback)
-- The space between cues matters as much as the cue itself. Users need to be practicing defence, footwork, feints in between, otherwise bad habits form (static or pointless movement).
-- Allow users to pick what they do ON the cue (e.g. throw 1-2-1) and what they work on IN BETWEEN (e.g. lead feints). This gives structure to both moments.
-- Explainer content: if users are picking skills, they need to know how to do them. Could be short video or instructions for each skill (e.g. how to throw a jab, a cross, a combination).
-
-### Music integration
-- Athletes want to control Spotify or preferred music app from within Randoro without leaving the app.
+### Sport presets (further out)
+- The UI is boxing-specific. Other sports (hurling, running) have shown interest. Boxing stays the default; add sport-specific presets and setup variants later.
 
 ## Release
-
-- App icon: finalise QRS waveform design, integrate into build
-- App Store submission
-
----
-
-## Feedback log
-
-### 07 Jun 2026 — Post-Demos Anon feedback
-Collected from hurling athletes, runners, and boxing coaches after presenting at Demos Anon (29 May 2026).
+- App icon: finalise QRS waveform design, integrate into the build.
+- App Store submission.
