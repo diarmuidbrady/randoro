@@ -3,7 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Randoro — Reaction training for boxing</title>
+<title>randoro: reaction training for boxing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;650;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #14171c;
@@ -18,9 +21,10 @@
     --signal-dim: #8f2f2f;
     --red: #ef4444;
     --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
+  html { font-synthesis: none; }
   body {
     margin: 0;
     background: var(--bg);
@@ -41,8 +45,8 @@
     font-size: 14px;
   }
   nav .brand {
-    font-weight: 700; color: var(--text); letter-spacing: -0.01em;
-    margin-right: auto; font-size: 16px;
+    font-weight: 200; color: var(--text); letter-spacing: -0.01em;
+    margin-right: auto; font-size: 32px;
   }
   nav a { color: var(--text-dim); }
   nav a:hover { color: var(--text); text-decoration: none; }
@@ -50,14 +54,16 @@
 
   /* Hero */
   h1 {
-    font-size: 34px; line-height: 1.15; letter-spacing: -0.02em;
+    font-size: 34px; font-weight: 300; font-style: normal;
+    line-height: 1.15; letter-spacing: -0.02em;
     margin: 0 0 14px; color: var(--text); text-wrap: balance;
   }
   .tagline {
-    font-family: var(--mono); font-size: 13px; color: var(--signal);
-    letter-spacing: 0.04em; text-transform: lowercase; margin: 0 0 28px;
+    font-family: var(--mono); font-style: normal; font-weight: 500;
+    font-size: 13px; color: var(--signal);
+    letter-spacing: 0.05em; text-transform: lowercase; margin: 0 0 28px;
   }
-  .lede { font-size: 17px; color: var(--text); margin: 0 0 18px; }
+  .lede { font-size: 17px; font-weight: 400; color: var(--text); margin: 0 0 18px; }
   p { margin: 0 0 18px; }
 
   /* CTA */
@@ -70,6 +76,34 @@
   }
   .cta:hover { text-decoration: none; filter: brightness(1.06); }
   .cta .dot { width: 8px; height: 8px; border-radius: 50%; background: #ffffff; }
+
+  /* Countdown */
+  .countdown {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 18px 20px; margin: 0 0 28px;
+  }
+  .countdown-label {
+    display: block; font-family: var(--mono); font-size: 12px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-dim); margin-bottom: 14px;
+  }
+  .countdown-units { display: flex; gap: 10px; }
+  .cu {
+    flex: 1; text-align: center;
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 9px; padding: 12px 6px;
+  }
+  .cu-num {
+    display: block; font-family: var(--sans); font-size: 30px; font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--signal); line-height: 1; font-variant-numeric: tabular-nums;
+  }
+  .cu-lab {
+    display: block; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--text-faint); margin-top: 7px;
+  }
+  .countdown.released .countdown-units { display: none; }
+  .countdown.released .countdown-label { color: var(--signal); margin-bottom: 0; }
 
   /* Sections */
   h2 {
@@ -114,18 +148,28 @@
 <body>
 <div class="wrap">
   <nav>
-    <span class="brand">Randoro</span>
+    <span class="brand">randoro</span>
     <a href="index.html" class="active">Home</a>
     <a href="privacy.html">Privacy</a>
   </nav>
 
   <p class="tagline">react to the unpredictable</p>
-  <h1>A reaction-training interval timer.</h1>
-  <p class="lede">Train your reactions solo with Randoro. It fires random beeps that force you to react and stay alert throughout the round.</p>
+  <h1>the reaction-training interval timer.</h1>
+  <p class="lede">Train your reactions solo with randoro. It fires random beeps that force you to react and stay alert throughout the round.</p>
 
-  <a class="cta" href="https://testflight.apple.com/join/M54H5TSK"><span class="dot"></span>Join the TestFlight beta</a>
+  <div class="countdown" id="countdown" aria-live="polite">
+    <span class="countdown-label">iOS App Store release · 1 September 2026</span>
+    <div class="countdown-units" id="countdownUnits">
+      <div class="cu"><span class="cu-num" id="cd-days">--</span><span class="cu-lab">days</span></div>
+      <div class="cu"><span class="cu-num" id="cd-hours">--</span><span class="cu-lab">hrs</span></div>
+      <div class="cu"><span class="cu-num" id="cd-mins">--</span><span class="cu-lab">min</span></div>
+      <div class="cu"><span class="cu-num" id="cd-secs">--</span><span class="cu-lab">sec</span></div>
+    </div>
+  </div>
 
-  <p>Randoro keeps you accountable when you train alone. Set your rounds and start, and the beeps come at random intervals within the bounds you choose.</p>
+  <a class="cta" href="https://testflight.apple.com/join/M54H5TSK"><span class="dot"></span>Join the iOS TestFlight Beta</a>
+
+  <p>randoro keeps you accountable when you train alone. Set your rounds and start, and the beeps come at random intervals within the bounds you choose.</p>
 
   <p>The cues play through your phone, headphones, or a speaker, and keep going in the background and on the lock screen so you can pocket the phone mid-round. They also play alongside Spotify, so you can train to your own music.</p>
 
@@ -152,5 +196,40 @@
     <span><a href="privacy.html">Privacy Policy</a></span>
   </footer>
 </div>
+
+<script>
+  (function () {
+    // Target: 1 September 2026, 00:00 in the viewer's local time.
+    var target = new Date(2026, 8, 1, 0, 0, 0); // month is 0-indexed: 8 = September
+    var box = document.getElementById('countdown');
+    var label = box.querySelector('.countdown-label');
+    var elDays = document.getElementById('cd-days');
+    var elHours = document.getElementById('cd-hours');
+    var elMins = document.getElementById('cd-mins');
+    var elSecs = document.getElementById('cd-secs');
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+
+    function tick() {
+      var diff = target.getTime() - Date.now();
+      if (diff <= 0) {
+        box.classList.add('released');
+        label.textContent = 'Out now on the iOS App Store';
+        return true; // stop
+      }
+      var s = Math.floor(diff / 1000);
+      elDays.textContent = Math.floor(s / 86400);
+      elHours.textContent = pad(Math.floor((s % 86400) / 3600));
+      elMins.textContent = pad(Math.floor((s % 3600) / 60));
+      elSecs.textContent = pad(s % 60);
+      return false;
+    }
+
+    if (!tick()) {
+      var timer = setInterval(function () {
+        if (tick()) clearInterval(timer);
+      }, 1000);
+    }
+  })();
+</script>
 </body>
 </html>
