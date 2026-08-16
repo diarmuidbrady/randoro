@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Randoro — Reaction training for boxing</title>
+<style>
+  :root {
+    --bg: #14171c;
+    --panel: #1b1f26;
+    --panel-2: #21262f;
+    --line: #2a2f38;
+    --line-strong: #3a414d;
+    --text: #c7ccd4;
+    --text-dim: #838b98;
+    --text-faint: #5b6270;
+    --signal: #ef4444;
+    --signal-dim: #8f2f2f;
+    --red: #ef4444;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--signal); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .wrap { max-width: 620px; margin: 0 auto; padding: 56px 22px 72px; }
+
+  /* Nav */
+  nav {
+    display: flex; gap: 20px; align-items: center;
+    margin-bottom: 48px;
+    font-size: 14px;
+  }
+  nav .brand {
+    font-weight: 700; color: var(--text); letter-spacing: -0.01em;
+    margin-right: auto; font-size: 16px;
+  }
+  nav a { color: var(--text-dim); }
+  nav a:hover { color: var(--text); text-decoration: none; }
+  nav a.active { color: var(--text); }
+
+  /* Hero */
+  h1 {
+    font-size: 34px; line-height: 1.15; letter-spacing: -0.02em;
+    margin: 0 0 14px; color: var(--text); text-wrap: balance;
+  }
+  .tagline {
+    font-family: var(--mono); font-size: 13px; color: var(--signal);
+    letter-spacing: 0.04em; text-transform: lowercase; margin: 0 0 28px;
+  }
+  .lede { font-size: 17px; color: var(--text); margin: 0 0 18px; }
+  p { margin: 0 0 18px; }
+
+  /* CTA */
+  .cta {
+    display: inline-flex; align-items: center; gap: 9px;
+    background: var(--signal); color: #ffffff;
+    font-weight: 650; font-size: 15px;
+    padding: 12px 22px; border-radius: 10px;
+    margin: 8px 0 40px;
+  }
+  .cta:hover { text-decoration: none; filter: brightness(1.06); }
+  .cta .dot { width: 8px; height: 8px; border-radius: 50%; background: #ffffff; }
+
+  /* Sections */
+  h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.09em;
+    color: var(--text-dim); font-weight: 600;
+    margin: 40px 0 14px;
+  }
+  ul.feat { list-style: none; padding: 0; margin: 0 0 8px; }
+  ul.feat li {
+    padding: 11px 0; border-top: 1px solid var(--line);
+    display: flex; gap: 12px;
+  }
+  ul.feat li::before {
+    content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--signal); margin-top: 9px;
+  }
+  ul.feat b { color: var(--text); font-weight: 600; }
+
+  /* Support / links card */
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 20px 22px; margin: 14px 0 0;
+  }
+  .links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+  .link-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--panel-2); border: 1px solid var(--line-strong);
+    color: var(--text); font-size: 14px; font-weight: 550;
+    padding: 9px 15px; border-radius: 9px;
+  }
+  .link-btn:hover { border-color: var(--signal-dim); text-decoration: none; }
+  .email { font-family: var(--mono); font-size: 14px; }
+
+  footer {
+    margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--line);
+    font-size: 13px; color: var(--text-faint);
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  footer a { color: var(--text-dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <span class="brand">Randoro</span>
+    <a href="index.html" class="active">Home</a>
+    <a href="privacy.html">Privacy</a>
+  </nav>
+
+  <p class="tagline">react to the unpredictable</p>
+  <h1>A reaction-training interval timer.</h1>
+  <p class="lede">Train your reactions solo with Randoro. It fires random beeps that force you to react and stay alert throughout the round.</p>
+
+  <a class="cta" href="https://testflight.apple.com/join/M54H5TSK"><span class="dot"></span>Join the TestFlight beta</a>
+
+  <p>Randoro keeps you accountable when you train alone. Set your rounds and start, and the beeps come at random intervals within the bounds you choose.</p>
+
+  <p>The cues play through your phone, headphones, or a speaker, and keep going in the background and on the lock screen so you can pocket the phone mid-round. They also play alongside Spotify, so you can train to your own music.</p>
+
+  <h2>What it does</h2>
+  <ul class="feat">
+    <li><span><b>Random cues.</b> Beeps fire at random intervals during work rounds, within the intensity you choose.</span></li>
+    <li><span><b>Full round structure.</b> Warm-up, rounds, work and rest durations, and cool-down.</span></li>
+    <li><span><b>Flash and vibration.</b> Optional screen flash and vibration on each cue.</span></li>
+    <li><span><b>Background audio.</b> Cues keep playing on the lock screen and behind other apps.</span></li>
+  </ul>
+
+  <h2>Support</h2>
+  <div class="card">
+    <p style="margin:0 0 14px;">Questions, bugs, or feedback are welcome. Reach out any of these ways:</p>
+    <div class="links">
+      <a class="link-btn" href="mailto:randoro.app@gmail.com">Email</a>
+      <a class="link-btn" href="https://instagram.com/randoro.app">Instagram</a>
+    </div>
+    <p style="margin:16px 0 0;" class="email"><a href="mailto:randoro.app@gmail.com">randoro.app@gmail.com</a></p>
+  </div>
+
+  <footer>
+    <span>© 2026 Diarmuid Brady</span>
+    <span><a href="privacy.html">Privacy Policy</a></span>
+  </footer>
+</div>
+</body>
+</html>
