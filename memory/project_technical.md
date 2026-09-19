@@ -14,8 +14,6 @@ expo-av is fully deprecated as of SDK 55. expo-audio is the current replacement.
 
 **DurationPicker component:** Replaced DurationBlock. Has two variants — 'main' (work/rest, colored top border) and 'peripheral' (warmup/cooldown, compact row). Uses Modal with scroll wheels on tap. Uses @react-native-picker/picker.
 
-**Sandbox build fix:** ENABLE_USER_SCRIPT_SANDBOXING set to NO in project.pbxproj — required to fix sandbox file-write error during iOS builds.
-
 **Interval count calculation:** Fixed to use minGap + avgFrequency combined as full_gap, not avgFrequency alone. Removed minGap >= avgFrequency validation as it's no longer needed.
 
 **TestFlight workflow:** Archive in Xcode → Distribute → App Store Connect → Upload. Build number increments each archive. Version number stays at 1.0.0 until public App Store release.
