@@ -103,43 +103,21 @@ RANDORO_UPLOAD_STORE_PASSWORD=<password>
 RANDORO_UPLOAD_KEY_PASSWORD=<password>
 ```
 
-Add a `release` signing config to `android/app/build.gradle` and point `buildTypes.release`
-at it instead of `signingConfigs.debug`:
+`plugins/withSigningConfig.js` adds a `release` signing config that reads these
+properties to `android/app/build.gradle` whenever Expo generates `android/`. Nothing
+needs editing by hand.
 
-```gradle
-signingConfigs {
-    debug { ... }
-    release {
-        if (project.hasProperty("RANDORO_UPLOAD_STORE_FILE")) {
-            storeFile file(project.findProperty("RANDORO_UPLOAD_STORE_FILE"))
-            storePassword project.findProperty("RANDORO_UPLOAD_STORE_PASSWORD")
-            keyAlias project.findProperty("RANDORO_UPLOAD_KEY_ALIAS")
-            keyPassword project.findProperty("RANDORO_UPLOAD_KEY_PASSWORD")
-        }
-    }
-}
-buildTypes {
-    debug { ... }
-    release {
-        signingConfig signingConfigs.release
-    }
-}
-```
-
-Verify the config, then build:
+Increment `android.versionCode` in `app.json` before each upload, then generate the
+native project and build:
 
 ```bash
+npx expo prebuild --platform android
 cd android
 ./gradlew signingReport     # release must show the upload keystore, not debug
 ./gradlew bundleRelease
 ```
 
 Upload `android/app/build/outputs/bundle/release/app-release.aab` to Play Console.
-
-Increment `versionCode` in `android/app/build.gradle` before each upload.
-
-Expo regenerates `android/`, which discards the signing config and resets `versionCode`.
-Re-apply both before releasing.
 
 ### Expo Go vs the dev build
 
