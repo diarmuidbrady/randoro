@@ -37,8 +37,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-audio",
-      "./plugins/withAudioSession"
+      "expo-audio"
     ]
   }
 }
