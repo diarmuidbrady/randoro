@@ -3,7 +3,10 @@
 Feature ideas and known work, distilled and concise. The user needs behind these live in [USER_NEEDS.md](USER_NEEDS.md). The guiding constraint on every feature: keep it simple, a user should start a workout in a few clicks.
 
 ## Bugs
-- N/A
+### Android
+- **Audio Playback**: The audio drops out intermittently
+- **Duration picker**: The picker displays partially at the bottom of the screen making it difficult to choose. Also unpleasant to look at.
+- **Home animation**: The dots move chaotically and do not resemble the ECG trace motion. At the end, the o in randoro disappears after appearing momentarily.
 
 ## Feature ideas
 

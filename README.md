@@ -62,6 +62,76 @@ npx expo prebuild --platform ios
 npx expo run:ios --device
 ```
 
+### Run on a device
+
+```bash
+adb devices
+npx expo run:android --device
+```
+
+### Release
+
+Create an upload keystore. Store the password in a password manager and back up the
+`.jks` file. Losing it means the app can never be updated under the same package name.
+
+```bash
+keytool -genkeypair -v -storetype PKCS12 \
+  -keystore ~/randoro-upload-key.jks \
+  -alias randoro-upload \
+  -keyalg RSA -keysize 2048 -validity 10000
+```
+
+Add the credentials to `~/.gradle/gradle.properties`. Use an absolute path for the store
+file. Do not quote the values.
+
+```properties
+RANDORO_UPLOAD_STORE_FILE=/Users/<you>/randoro-upload-key.jks
+RANDORO_UPLOAD_KEY_ALIAS=randoro-upload
+RANDORO_UPLOAD_STORE_PASSWORD=<password>
+RANDORO_UPLOAD_KEY_PASSWORD=<password>
+```
+
+Add a `release` signing config to `android/app/build.gradle` and point `buildTypes.release`
+at it instead of `signingConfigs.debug`:
+
+```gradle
+defaultConfigs {
+    versionCode: 2
+}
+signingConfigs {
+    debug { ... }
+    release {
+        if (project.hasProperty("RANDORO_UPLOAD_STORE_FILE")) {
+            storeFile file(project.findProperty("RANDORO_UPLOAD_STORE_FILE"))
+            storePassword project.findProperty("RANDORO_UPLOAD_STORE_PASSWORD")
+            keyAlias project.findProperty("RANDORO_UPLOAD_KEY_ALIAS")
+            keyPassword project.findProperty("RANDORO_UPLOAD_KEY_PASSWORD")
+        }
+    }
+}
+buildTypes {
+    debug { ... }
+    release {
+        signingConfig signingConfigs.release
+    }
+}
+```
+
+Verify the config, then build:
+
+```bash
+cd android
+./gradlew signingReport     # release must show the upload keystore, not debug
+./gradlew bundleRelease
+```
+
+Upload `android/app/build/outputs/bundle/release/app-release.aab` to Play Console.
+
+Increment `versionCode` in `android/app/build.gradle` before each upload.
+
+Expo regenerates `android/`, which discards the signing config and resets `versionCode`.
+Re-apply both before releasing.
+
 ### Expo Go vs the dev build
 
 Randoro depends on native modules, notably `@react-native-picker/picker` (the
@@ -96,9 +166,6 @@ src/
     time.js            Time formatting / parsing
   constants/
     theme.js           Colors, intensity/combo presets
-
-plugins/
-  withAudioSession.js  Native plugin: AVAudioSession setup in AppDelegate
 
 scripts/
   generate-sounds.js   Generates beep WAVs and the silence track
