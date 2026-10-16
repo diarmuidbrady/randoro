@@ -99,12 +99,8 @@ export default function RunningScreen({ route, navigation }) {
   const playSound = useCallback(async (player) => {
     try {
       // If the playhead is not at the start, rewind and wait for the rewind to
-      // finish before playing. seekTo returns a promise. Without await, play can
-      // run before the rewind lands and the beep is silently dropped. This was
-      // the intermittent ghost beep (flash, no sound) on rapid replays.
-      if (player.currentTime > 0) {
-        await player.seekTo(0);
-      }
+      // finish before playing. 
+      await player.seekTo(0);
       player.play();
     } catch {
       // Audio not available — haptics still fire
