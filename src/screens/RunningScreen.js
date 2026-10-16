@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
-// Native AppDelegate sets .playback at launch (plugins/withAudioSession.js).
 // This call sets shouldPlayInBackground=true (without it, expo-audio explicitly
 // pauses all players when the app backgrounds). interruptionMode='mixWithOthers'
 // allows our audio to mix with other apps (e.g. music players) instead of

@@ -176,9 +176,6 @@ src/
   constants/
     theme.js           Colors, intensity/combo presets
 
-plugins/
-  withAudioSession.js  Native plugin: AVAudioSession setup in AppDelegate
-
 scripts/
   generate-sounds.js   Generates beep WAVs and the silence track
 
