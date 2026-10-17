@@ -7,22 +7,26 @@
  * @returns {number[]}          - Ping times relative to round start (seconds)
  */
 function generatePingTimes(workDuration, n, minGap) {
-  if (n < 1 || minGap < 0 || workDuration < n * minGap) return [];
+  // n pings make n + 1 gaps: round start → first ping, between pings, and
+  // last ping → round end. Each gap is at least minGap, so no ping lands on
+  // the round start or round end sounds.
+  const gaps = n + 1;
+  if (n < 1 || minGap < 0 || workDuration < gaps * minGap) return [];
 
-  if (workDuration === n * minGap) {
+  if (workDuration === gaps * minGap) {
     return Array.from({ length: n }, (_, i) => (i + 1) * minGap);
   }
 
-  const excessTime = workDuration - n * minGap;
+  const excessTime = workDuration - gaps * minGap;
 
-  const randoms = Array.from({ length: n }, () => Math.random() * excessTime);
+  const randoms = Array.from({ length: gaps }, () => Math.random());
   const total = randoms.reduce((sum, r) => sum + r, 0);
   const normalized = randoms.map(r => (r * excessTime) / total);
 
   const pingTimes = [];
   let cumulative = 0;
   for (let i = 0; i < n; i++) {
-    cumulative += normalized[i] + (i > 0 ? minGap : 0);
+    cumulative += minGap + normalized[i];
     pingTimes.push(cumulative);
   }
 
