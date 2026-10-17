@@ -271,7 +271,7 @@ function DurationPicker({ label, color, value, onChange, variant }) {
               onValueChange={(s) => onChange({ ...value, seconds: s })}
               style={{ flex: 1 }}
             >
-              {Array.from({ length: 61 }, (_, i) => i).map(n => (
+              {Array.from({ length: 60 }, (_, i) => i).map(n => (
                 <Picker.Item key={n} label={`${n}s`} value={n} />
               ))}
             </Picker>
