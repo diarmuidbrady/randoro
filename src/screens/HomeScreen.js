@@ -138,6 +138,7 @@ export default function HomeScreen({ navigation }) {
   const rafRef = useRef(null);
   const trailBufferRef = useRef([]);
   const [trailPositions, setTrailPositions] = useState([]);
+  const [isReady, setIsReady] = useState(false); // GET READY is tappable once visible
 
   function computeRevealThresholds() {
     if (!oRestLayout.current || !letterLayouts.current.every(l => l !== null)) return;
@@ -265,7 +266,7 @@ export default function HomeScreen({ navigation }) {
       }).start(() => {
         Animated.timing(prepareOpacity, {
           toValue: 1, duration: 200, useNativeDriver: true,
-        }).start();
+        }).start(() => setIsReady(true));
       });
     }, 300);
   }
@@ -371,7 +372,7 @@ export default function HomeScreen({ navigation }) {
             strokeDashoffset={dashOffset}
           />
         </Svg>
-        <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Setup')}>
+        <TouchableOpacity style={styles.button} disabled={!isReady} onPress={() => navigation.navigate('Setup')}>
           <Animated.Text
             maxFontSizeMultiplier={BUTTON_TEXT_MAX_FONT_MULTIPLIER}
             numberOfLines={1}

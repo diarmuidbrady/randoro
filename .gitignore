@@ -43,3 +43,7 @@ yarn-error.*
 
 # sound files
 assets/sounds*
+
+# personal notes kept out of the public repo
+memory/user_profile.md
+memory/feedback_collaboration.md
