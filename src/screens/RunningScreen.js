@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Animated,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
@@ -31,6 +32,7 @@ import { formatTime, formatElapsed } from '../utils/time';
 
 const TICK_MS = 100;
 const FLASH_DURATION_MS = 300;
+const SILENCE_HANDOVER_S = 3;
 
 export default function RunningScreen({ route, navigation }) {
   const { workout, flashEnabled, vibrationEnabled } = route.params;
@@ -59,25 +61,70 @@ export default function RunningScreen({ route, navigation }) {
   const doubleRestPlayer = useAudioPlayer(require('../../assets/sounds/double_rest.wav'), playerOpts);
   const warmupPlayer     = useAudioPlayer(require('../../assets/sounds/warmup.wav'), playerOpts);
   const cooldownPlayer   = useAudioPlayer(require('../../assets/sounds/cooldown.wav'), playerOpts);
-  // 60 min low-amplitude 110 Hz sine, played non-looped at volume 0.05 while running.
+  // 5 min low-amplitude 110 Hz sine, played non-looped at volume 0.05 while running.
   // Bluetooth audio routing in background and on lock screen needs constant non-zero
   // volume — discrete beeps with gaps aren't enough. Loop=false because expo-audio's
   // loop=true has a ~100 ms restart gap iOS treats as "audio stopped". 0.05 is below
   // the threshold of perception in a normal room.
+  // Two players take turns: when the active one is SILENCE_HANDOVER_S from its end,
+  // the other starts from 0, so audio never stops however long the workout runs.
   // See memory/project_audio_journey_log.md.
-  const silencePlayer    = useAudioPlayer(require('../../assets/sounds/silence.wav'), playerOpts);
+  const silenceOpts = { keepAudioSessionActive: true, updateInterval: TICK_MS };
+  const silenceA = useAudioPlayer(require('../../assets/sounds/silence.wav'), silenceOpts);
+  const silenceB = useAudioPlayer(require('../../assets/sounds/silence.wav'), silenceOpts);
+  const activeSilenceRef = useRef(0);
+  const tickRef = useRef(null);
 
   useEffect(() => {
-    silencePlayer.loop = false;
-    silencePlayer.volume = 0.05;
-  }, [silencePlayer]);
-
-  useEffect(() => {
-    if (isRunning) {
-      silencePlayer.play();
-      return () => { try { silencePlayer.pause(); } catch {} };
+    for (const p of [silenceA, silenceB]) {
+      p.loop = false;
+      p.volume = 0.05;
     }
-  }, [isRunning, silencePlayer]);
+  }, [silenceA, silenceB]);
+
+  useEffect(() => {
+    if (!isRunning) return;
+    const players = [silenceA, silenceB];
+
+    const startFromTop = async (player) => {
+      try {
+        await player.seekTo(0);
+        player.play();
+      } catch {}
+    };
+
+    players[activeSilenceRef.current].play();
+
+    const subs = players.map((player, i) => player.addListener('playbackStatusUpdate', (status) => {
+      if (i !== activeSilenceRef.current) return;
+      // Android pauses JS timers in the background, so the status updates
+      // (which keep firing while audio plays) drive the timer there instead.
+      if (Platform.OS === 'android') tickRef.current?.();
+      const remaining = status.duration - status.currentTime;
+      if (status.didJustFinish || (status.duration > 0 && remaining <= SILENCE_HANDOVER_S)) {
+        activeSilenceRef.current = 1 - i;
+        startFromTop(players[1 - i]);
+      }
+    }));
+
+    // Android only keeps a backgrounded app's process running reliably while a
+    // foreground service is active. The lock-screen media session starts one
+    // (with a media notification). It's attached to the ping player so the
+    // notification's play/pause button can't stop the silence stream.
+    if (Platform.OS === 'android') {
+      pingPlayer.setActiveForLockScreen(true, { title: 'randoro', artist: 'Workout in progress' });
+    }
+
+    return () => {
+      subs.forEach((s) => s.remove());
+      for (const p of players) {
+        try { p.pause(); } catch {}
+      }
+      if (Platform.OS === 'android') {
+        try { pingPlayer.clearLockScreenControls(); } catch {}
+      }
+    };
+  }, [isRunning, silenceA, silenceB, pingPlayer]);
 
   // ── Keep awake ────────────────────────────────────────────
   useEffect(() => {
@@ -97,8 +144,9 @@ export default function RunningScreen({ route, navigation }) {
   // ── Sound helper ──────────────────────────────────────────
   const playSound = useCallback(async (player) => {
     try {
-      // If the playhead is not at the start, rewind and wait for the rewind to
-      // finish before playing. 
+      // Rewind, and wait for the rewind to land before playing. Without the
+      // await, play can run first and the beep is silently dropped (the
+      // "ghost beep").
       await player.seekTo(0);
       player.play();
     } catch {
@@ -125,6 +173,8 @@ export default function RunningScreen({ route, navigation }) {
 
   // ── Tick ──────────────────────────────────────────────────
   const tick = useCallback(() => {
+    // A status update can arrive just after the workout finishes.
+    if (lastEventElapsedRef.current >= totalDuration) return;
     const now = Date.now();
     const current = pausedElapsedRef.current + (now - startTimeRef.current) / 1000;
 
@@ -174,6 +224,7 @@ export default function RunningScreen({ route, navigation }) {
     pingPlayer, doublePlayer, doubleRestPlayer, warmupPlayer, cooldownPlayer,
     playSound, triggerFlash,
   ]);
+  tickRef.current = tick;
 
   useEffect(() => {
     if (isRunning) {

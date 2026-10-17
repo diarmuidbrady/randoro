@@ -1,12 +1,13 @@
 /**
  * Generates WAV audio files for Randoro v2.
  *
- * Sound types:
- *   ping.wav        — single 750 Hz / 0.15 s  (interval cue)
- *   double.wav      — two   750 Hz / 0.15 s   (work/round start)
- *   double_rest.wav — two   500 Hz / 0.30 s   (rest start)
- *   triple.wav      — three 750 Hz / 0.15 s   (warmup / cooldown / done)
- *   silence.wav     — 60 min of 110 Hz sine at amplitude 0.05, 8 kHz mono (~57 MB)
+ * Sound types (frequencies and durations are in the `files` map below):
+ *   ping.wav        — single beep            (interval cue)
+ *   double.wav      — two beeps              (work/round start)
+ *   double_rest.wav — two lower, longer beeps (rest start)
+ *   warmup.wav      — three rising beeps     (warmup start)
+ *   cooldown.wav    — three falling beeps    (cooldown start / done)
+ *   silence.wav     — 5 min of 110 Hz sine at amplitude 0.05, 8 kHz mono (~4.8 MB)
  *
  * Beeps: 44.1 kHz, 16-bit mono PCM.
  * Each beep has a 20 ms linear fade-in + fade-out envelope.
@@ -14,8 +15,9 @@
  *
  * Silence: low-amplitude 110 Hz drone (not actual silence) at 8 kHz to keep file
  * size down. Played non-looped at volume 0.05 in the app — Bluetooth audio routing
- * in background and on lock screen needs constant non-zero volume.
- * See memory/randoro_bluetooth_audio_journey_log.md.
+ * in background and on lock screen needs constant non-zero volume. RunningScreen
+ * alternates two players on this file so workouts can run longer than 5 minutes.
+ * See memory/project_audio_journey_log.md.
  */
 
 const fs   = require('fs');
@@ -169,7 +171,7 @@ for (const [name, beeps] of Object.entries(files)) {
   console.log(`  ✓  ${name}`);
 }
 
-fs.writeFileSync(path.join(outDir, 'silence.wav'), buildSilenceWav(60 * 60));
+fs.writeFileSync(path.join(outDir, 'silence.wav'), buildSilenceWav(5 * 60));
 console.log(`  ✓  silence.wav`);
 
 console.log('\nAll sounds written to assets/sounds/');
