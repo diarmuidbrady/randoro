@@ -6,10 +6,6 @@ Last synced to the repo `memory/` folder: 16 Aug 2026.
 - [Project Context](project_context.md) — What Randoro is, current state, direction
 - [Technical Decisions](project_technical.md) — Stack and key technical decisions
 
-## About the user (rarely changes)
-- [User Profile](user_profile.md) — Junior engineer, first MVP shipped, building mobile v2
-- [Collaboration Feedback](feedback_collaboration.md) — How to work with this user effectively
-
 ## Reference (write-once records of solved problems)
 - [Audio Session Findings](project_audio_session.md) — Distilled: A3102 routing + background audio, what's ruled out
 - [Audio Journey Log](project_audio_journey_log.md) — Full chronological record of the Bluetooth/background audio investigation

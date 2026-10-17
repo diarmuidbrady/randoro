@@ -190,6 +190,4 @@ The `memory/` folder is dual-use: context written for an AI assistant between se
 
 ## Known limitations (v1)
 
-See [TODO.md](TODO.md) for the full list. Headlines:
-
-- Spotify pauses when Randoro is opened. The user must resume it to continue listening.
+See [TODO.md](TODO.md) for open bugs and feature ideas.
