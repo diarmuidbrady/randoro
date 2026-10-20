@@ -11,7 +11,7 @@
  *
  * Beeps: 44.1 kHz, 16-bit mono PCM.
  * Each beep has a 20 ms linear fade-in + fade-out envelope.
- * Multi-beep files have 80 ms silence between beeps.
+ * Multi-beep files have 80 ms silence between beeps, and are padded to MIN_FILE_S.
  *
  * Silence: low-amplitude 110 Hz drone (not actual silence) at 8 kHz to keep file
  * size down. Played non-looped at volume 0.05 in the app — Bluetooth audio routing
@@ -26,6 +26,9 @@ const path = require('path');
 const SAMPLE_RATE = 44100;
 const FADE_S      = 0.02;   // 20 ms fade at each end of a beep
 const GAP_S       = 0.08;   // 80 ms silence between beeps
+// Minimum file length. On Android, the first play of a clip shorter than
+// ExoPlayer's audio buffer (up to 750 ms) is silent.
+const MIN_FILE_S  = 1.0;
 
 // A pure sine reads as quiet: all its energy sits at one frequency and its
 // average (RMS) level is low relative to its peak. Summing odd harmonics
@@ -88,6 +91,9 @@ function buildWav(beeps) {
     const scale = PEAK / actualPeak;
     for (let i = 0; i < pcm.length; i++) pcm[i] *= scale;
   }
+
+  const minSamples = Math.ceil(SAMPLE_RATE * MIN_FILE_S);
+  while (pcm.length < minSamples) pcm.push(0);
 
   const numSamples = pcm.length;
   const dataBytes  = numSamples * 2; // 16-bit = 2 bytes per sample
