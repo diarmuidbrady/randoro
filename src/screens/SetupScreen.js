@@ -10,7 +10,7 @@ import {
   Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Picker } from '@react-native-picker/picker';
+import WheelPicker from '../components/WheelPicker';
 import {
   INTENSITY_MAP,
   INTENSITY_LABELS,
@@ -245,36 +245,39 @@ export default function SetupScreen({ navigation }) {
   );
 }
 
+const MINUTES = Array.from({ length: 61 }, (_, i) => i);
+const SECONDS = Array.from({ length: 60 }, (_, i) => i);
+const ROUNDS = Array.from({ length: 50 }, (_, i) => i + 1);
+
 function DurationPicker({ label, color, value, onChange, variant }) {
   const [isOpen, setIsOpen] = useState(false);
+  const insets = useSafeAreaInsets();
   const display = `${String(value.minutes).padStart(2, '0')}:${String(value.seconds).padStart(2, '0')}`;
 
   const pickerModal = (
     <Modal visible={isOpen} transparent animationType="none">
       <View style={styles.pickerModalOverlay}>
-        <View style={styles.pickerModalSheet}>
+        <View style={[styles.pickerModalSheet, { paddingBottom: 24 + insets.bottom }]}>
           <TouchableOpacity style={styles.pickerModalDone} onPress={() => setIsOpen(false)}>
             <Text style={styles.pickerModalDoneText}>Done</Text>
           </TouchableOpacity>
           <View style={{ flexDirection: 'row' }}>
-            <Picker
-              selectedValue={value.minutes}
-              onValueChange={(m) => onChange({ ...value, minutes: m })}
+            <WheelPicker
+              items={MINUTES}
+              value={value.minutes}
+              onChange={(m) => onChange({ ...value, minutes: m })}
+              formatLabel={(n) => `${n}m`}
+              accessibilityLabel={`${label} minutes`.trim()}
               style={{ flex: 1 }}
-            >
-              {Array.from({ length: 61 }, (_, i) => i).map(n => (
-                <Picker.Item key={n} label={`${n}m`} value={n} />
-              ))}
-            </Picker>
-            <Picker
-              selectedValue={value.seconds}
-              onValueChange={(s) => onChange({ ...value, seconds: s })}
+            />
+            <WheelPicker
+              items={SECONDS}
+              value={value.seconds}
+              onChange={(s) => onChange({ ...value, seconds: s })}
+              formatLabel={(n) => `${n}s`}
+              accessibilityLabel={`${label} seconds`.trim()}
               style={{ flex: 1 }}
-            >
-              {Array.from({ length: 60 }, (_, i) => i).map(n => (
-                <Picker.Item key={n} label={`${n}s`} value={n} />
-              ))}
-            </Picker>
+            />
           </View>
         </View>
       </View>
@@ -303,6 +306,7 @@ function DurationPicker({ label, color, value, onChange, variant }) {
 
 function RoundsPicker({ value, onChangeText }) {
   const [isOpen, setIsOpen] = useState(false);
+  const insets = useSafeAreaInsets();
 
   return (
     <View>
@@ -313,19 +317,16 @@ function RoundsPicker({ value, onChangeText }) {
       </TouchableOpacity>
       <Modal visible={isOpen} transparent animationType="none">
         <View style={styles.pickerModalOverlay}>
-          <View style={styles.pickerModalSheet}>
+          <View style={[styles.pickerModalSheet, { paddingBottom: 24 + insets.bottom }]}>
             <TouchableOpacity style={styles.pickerModalDone} onPress={() => setIsOpen(false)}>
               <Text style={styles.pickerModalDoneText}>Done</Text>
             </TouchableOpacity>
-            <Picker
-              selectedValue={Number(value)}
-              onValueChange={(v) => onChangeText(String(v))}
-              style={{ width: '100%' }}
-            >
-              {Array.from({ length: 50 }, (_, i) => i + 1).map(n => (
-                <Picker.Item key={n} label={`${n}`} value={n} />
-              ))}
-            </Picker>
+            <WheelPicker
+              items={ROUNDS}
+              value={Number(value)}
+              onChange={(v) => onChangeText(String(v))}
+              accessibilityLabel="Rounds"
+            />
           </View>
         </View>
       </Modal>
