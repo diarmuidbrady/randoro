@@ -34,7 +34,8 @@ const R_HEIGHT  = AMP * 6.0;
 const Q_DEPTH   = AMP * 2.0;
 const S_DEPTH   = AMP * 2.0;
 
-const TRAIL_LENGTH = 60;
+const TRAIL_LENGTH = 30;
+const TRAIL_SPACING = 2; // frames between trail dots; LENGTH × SPACING sets the trail's length
 const DOT_COLOR_WHITE = '#FFFFFF';
 const DOT_COLOR_RED   = '#EF4444';
 
@@ -103,8 +104,8 @@ const RED_INPUT = [0, SEG_Q_END - RED_EDGE, SEG_Q_END, SEG_R_END, SEG_R_END + RE
 const RED_ON    = [0, 0, 1, 1, 0, 0];
 const WHITE_ON  = [1, 1, 0, 0, 1, 1];
 
-// Trail dots sit one 60 fps frame of travel behind each other.
-const TRAIL_STEP = 1000 / 60 / TRAVEL_DURATION;
+// Trail dots sit TRAIL_SPACING 60 fps frames of travel behind each other.
+const TRAIL_STEP = TRAIL_SPACING * 1000 / 60 / TRAVEL_DURATION;
 const TRAIL_AGES = Array.from({ length: TRAIL_LENGTH - 1 }, (_, i) => i + 1);
 const ABSORB_DURATION = 300;
 // How far the trail's last dot runs behind the head, in travel progress.
@@ -241,7 +242,6 @@ export default function HomeScreen({ navigation }) {
     Animated.timing(progress, {
       toValue: 1,
       duration: TRAVEL_DURATION,
-      delay: 50,
       easing: Easing.linear,
       useNativeDriver: true,
     }).start(({ finished }) => {
@@ -287,7 +287,7 @@ export default function HomeScreen({ navigation }) {
       flashWord(wordOpacities[0], undefined);
     }, 500);
 
-    // t=850ms: "to", "the" step in
+    // t=850ms: "to", "the" step in; GET READY starts drawing with "to"
     [1, 2].forEach((wordIdx, i) => {
       later(() => {
         Animated.timing(wordOpacities[wordIdx], {
@@ -295,23 +295,22 @@ export default function HomeScreen({ navigation }) {
         }).start();
       }, 850 + i * 150);
     });
+    later(startPhase3, 850);
 
-    // t=1400ms: "unpredictable" flashes, then phase 3
+    // t=1400ms: "unpredictable" flashes
     later(() => {
-      flashWord(wordOpacities[3], () => startPhase3());
+      flashWord(wordOpacities[3], undefined);
     }, 1400);
   }
 
   function startPhase3() {
-    later(() => {
-      Animated.timing(dashOffset, {
-        toValue: 0, duration: 400, useNativeDriver: true,
-      }).start(() => {
-        Animated.timing(prepareOpacity, {
-          toValue: 1, duration: 200, useNativeDriver: true,
-        }).start(() => setIsReady(true));
-      });
-    }, 300);
+    Animated.timing(dashOffset, {
+      toValue: 0, duration: 400, useNativeDriver: true,
+    }).start(() => {
+      Animated.timing(prepareOpacity, {
+        toValue: 1, duration: 200, useNativeDriver: true,
+      }).start(() => setIsReady(true));
+    });
   }
 
   function onLetterLayout(i, e) {
