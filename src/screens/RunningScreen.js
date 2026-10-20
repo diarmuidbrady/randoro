@@ -68,6 +68,8 @@ export default function RunningScreen({ route, navigation }) {
   // the threshold of perception in a normal room.
   // Two players take turns: when the active one is SILENCE_HANDOVER_S from its end,
   // the other starts from 0, so audio never stops however long the workout runs.
+  // It plays while this screen is open, not just while running: an idle
+  // Bluetooth output takes ~0.5 s to start and clips the first beep.
   // See memory/project_audio_journey_log.md.
   const silenceOpts = { keepAudioSessionActive: true, updateInterval: TICK_MS };
   const silenceA = useAudioPlayer(require('../../assets/sounds/silence.wav'), silenceOpts);
@@ -83,7 +85,7 @@ export default function RunningScreen({ route, navigation }) {
   }, [silenceA, silenceB]);
 
   useEffect(() => {
-    if (!isRunning) return;
+    if (isDone) return;
     const players = [silenceA, silenceB];
 
     const startFromTop = async (player) => {
@@ -97,15 +99,31 @@ export default function RunningScreen({ route, navigation }) {
 
     const subs = players.map((player, i) => player.addListener('playbackStatusUpdate', (status) => {
       if (i !== activeSilenceRef.current) return;
-      // Android pauses JS timers in the background, so the status updates
-      // (which keep firing while audio plays) drive the timer there instead.
-      if (Platform.OS === 'android') tickRef.current?.();
       const remaining = status.duration - status.currentTime;
       if (status.didJustFinish || (status.duration > 0 && remaining <= SILENCE_HANDOVER_S)) {
         activeSilenceRef.current = 1 - i;
         startFromTop(players[1 - i]);
       }
     }));
+
+    return () => {
+      subs.forEach((s) => s.remove());
+      for (const p of players) {
+        try { p.pause(); } catch {}
+      }
+    };
+  }, [isDone, silenceA, silenceB]);
+
+  useEffect(() => {
+    if (!isRunning) return;
+    const players = [silenceA, silenceB];
+
+    // Android pauses JS timers in the background; the silence players' status updates drive the timer instead.
+    const subs = Platform.OS === 'android'
+      ? players.map((player, i) => player.addListener('playbackStatusUpdate', () => {
+          if (i === activeSilenceRef.current) tickRef.current?.();
+        }))
+      : [];
 
     // Android only keeps a backgrounded app's process running reliably while a
     // foreground service is active. The lock-screen media session starts one
@@ -117,9 +135,6 @@ export default function RunningScreen({ route, navigation }) {
 
     return () => {
       subs.forEach((s) => s.remove());
-      for (const p of players) {
-        try { p.pause(); } catch {}
-      }
       if (Platform.OS === 'android') {
         try { pingPlayer.clearLockScreenControls(); } catch {}
       }
