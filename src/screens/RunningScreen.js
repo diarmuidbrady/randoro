@@ -243,6 +243,8 @@ export default function RunningScreen({ route, navigation }) {
       // plays that phase's start sound, deferred from the silent paused jump.
       if (elapsed === currentPhase.start) {
         playSound(playerForPhaseType(currentPhase.type));
+        // Stops the first tick playing it again.
+        lastEventElapsedRef.current = elapsed;
       }
       setIsRunning(true);
     } else {
