@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, Dimensions } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, TouchableOpacity, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
@@ -34,10 +34,7 @@ const R_HEIGHT  = AMP * 6.0;
 const Q_DEPTH   = AMP * 2.0;
 const S_DEPTH   = AMP * 2.0;
 
-const RED_X_START = O_START_X + SEG_PR_END * (O_END_X - O_START_X);
-const RED_X_END   = O_START_X + SEG_S_END  * (O_END_X - O_START_X);
-
-const TRAIL_LENGTH = 12;
+const TRAIL_LENGTH = 60;
 const DOT_COLOR_WHITE = '#FFFFFF';
 const DOT_COLOR_RED   = '#EF4444';
 
@@ -88,6 +85,54 @@ function computeY(progress) {
   return 0;
 }
 
+// The ECG path as lookup tables over travel progress (0→1), interpolated by the
+// native driver. Driving it from JS dropped frames on Android.
+const SEGMENT_CORNERS = [
+  SEG_P_START, SEG_P_END, SEG_PR_END,
+  (SEG_PR_END + SEG_Q_END) / 2, SEG_Q_END,
+  (SEG_Q_END + SEG_R_END) / 2, SEG_R_END,
+  (SEG_R_END + SEG_S_END) / 2, SEG_S_END,
+];
+const P_WAVE_SAMPLES = Array.from({ length: 13 }, (_, i) => SEG_P_START + ((SEG_P_END - SEG_P_START) * i) / 12);
+const PATH_INPUT = [...new Set([0, 1, ...SEGMENT_CORNERS, ...P_WAVE_SAMPLES])].sort((a, b) => a - b);
+const PATH_Y = PATH_INPUT.map(computeY);
+
+// The dot is red on the R spike only.
+const RED_EDGE = 0.0001;
+const RED_INPUT = [0, SEG_Q_END - RED_EDGE, SEG_Q_END, SEG_R_END, SEG_R_END + RED_EDGE, 1];
+const RED_ON    = [0, 0, 1, 1, 0, 0];
+const WHITE_ON  = [1, 1, 0, 0, 1, 1];
+
+// Trail dots sit one 60 fps frame of travel behind each other.
+const TRAIL_STEP = 1000 / 60 / TRAVEL_DURATION;
+const TRAIL_AGES = Array.from({ length: TRAIL_LENGTH - 1 }, (_, i) => i + 1);
+const ABSORB_DURATION = 300;
+// How far the trail's last dot runs behind the head, in travel progress.
+const TRAIL_SPAN = (TRAIL_LENGTH - 1) * TRAIL_STEP;
+// A letter's fade-in, in travel progress (150 ms).
+const LETTER_FADE = 150 / TRAVEL_DURATION;
+
+// x, y and colour layers for a dot at the given travel progress.
+function pathAt(progress) {
+  const clamp = { extrapolate: 'clamp' };
+  return {
+    x: progress.interpolate({ inputRange: [0, 1], outputRange: [O_START_X, O_END_X], ...clamp }),
+    y: progress.interpolate({ inputRange: PATH_INPUT, outputRange: PATH_Y, ...clamp }),
+    red: progress.interpolate({ inputRange: RED_INPUT, outputRange: RED_ON, ...clamp }),
+    white: progress.interpolate({ inputRange: RED_INPUT, outputRange: WHITE_ON, ...clamp }),
+  };
+}
+
+// White and red layers: the native driver can't animate colour.
+function TravellingDot({ transform, whiteOpacity, redOpacity }) {
+  return (
+    <>
+      <Animated.View style={[styles.travellingDot, { transform, opacity: whiteOpacity, backgroundColor: DOT_COLOR_WHITE }]} />
+      <Animated.View style={[styles.travellingDot, { transform, opacity: redOpacity, backgroundColor: DOT_COLOR_RED }]} />
+    </>
+  );
+}
+
 const BUTTON_H = 68;
 const BUTTON_W = SCREEN_WIDTH - 80;
 const RADIUS = BUTTON_H / 2;
@@ -119,11 +164,10 @@ export default function HomeScreen({ navigation }) {
 
   const letterLayouts = useRef([null, null, null, null, null, null]);
   const oRestLayout = useRef(null);
-  const revealThresholdsRef = useRef(null);
 
-  const travelX = useRef(new Animated.Value(O_START_X)).current;
-  const travelY = useRef(new Animated.Value(0)).current;
-  const letterOpacities = useRef(Array.from({ length: 6 }, () => new Animated.Value(0))).current;
+  const progress     = useRef(new Animated.Value(0)).current; // travel, 0→1
+  const catchUp      = useRef(new Animated.Value(0)).current; // trail closes onto the landing point, 0→1
+  const trailOpacity = useRef(new Animated.Value(1)).current;
 
   const dotOpacity = useRef(new Animated.Value(1)).current;
   const dotScale   = useRef(new Animated.Value(1)).current;
@@ -135,97 +179,96 @@ export default function HomeScreen({ navigation }) {
   const dashOffset = useRef(new Animated.Value(HALF_PERIMETER)).current;
   const prepareOpacity = useRef(new Animated.Value(0)).current;
 
-  const rafRef = useRef(null);
-  const trailBufferRef = useRef([]);
-  const [trailPositions, setTrailPositions] = useState([]);
+  const timersRef = useRef([]);
+
+  const motionRef = useRef(null);
+  if (!motionRef.current) {
+    const head = pathAt(progress);
+    motionRef.current = {
+      // Progress of the trail's last dot.
+      tail: Animated.subtract(progress, catchUp.interpolate({ inputRange: [0, 1], outputRange: [TRAIL_SPAN, 0] })),
+      head: {
+        ...head,
+        whiteOpacity: Animated.multiply(dotOpacity, head.white),
+        redOpacity: Animated.multiply(dotOpacity, head.red),
+      },
+      trail: TRAIL_AGES.map(age => {
+        const lag = catchUp.interpolate({ inputRange: [0, 1], outputRange: [age * TRAIL_STEP, 0] });
+        const dot = pathAt(Animated.subtract(progress, lag));
+        const fade = Animated.multiply(trailOpacity, 1 - age / TRAIL_LENGTH);
+        return {
+          age,
+          ...dot,
+          scale: Math.max(0.1, 1 - age / TRAIL_LENGTH),
+          whiteOpacity: Animated.multiply(fade, dot.white),
+          redOpacity: Animated.multiply(fade, dot.red),
+        };
+      }),
+    };
+  }
+  const motion = motionRef.current;
   const [isReady, setIsReady] = useState(false); // GET READY is tappable once visible
+  const [revealAt, setRevealAt] = useState(null); // travel progress at each letter's centre
+
+  // Each letter fades in as the end of the trail passes its centre. Driven by
+  // the same native values as the trail, so they stay in step on Android.
+  const letterOpacities = useMemo(() => letterLayouts.current.map((_, i) => (
+    revealAt
+      ? motion.tail.interpolate({
+          inputRange: [revealAt[i], revealAt[i] + LETTER_FADE],
+          outputRange: [0, 1],
+          extrapolate: 'clamp',
+        })
+      : 0
+  )), [revealAt, motion]);
 
   function computeRevealThresholds() {
     if (!oRestLayout.current || !letterLayouts.current.every(l => l !== null)) return;
     const oCentreAtRest = oRestLayout.current.x + oRestLayout.current.width / 2;
-    revealThresholdsRef.current = letterLayouts.current.map(l => {
-      const lCentre = l.x + l.width / 2;
-      return lCentre - oCentreAtRest;
+    const points = letterLayouts.current.map(l => {
+      const threshold = l.x + l.width / 2 - oCentreAtRest;
+      const passAt = (threshold - O_START_X) / (O_END_X - O_START_X);
+      return Math.min(1 - LETTER_FADE, Math.max(0, passAt));
     });
+    setRevealAt(prev => prev ?? points);
+  }
+
+  function later(fn, ms) {
+    timersRef.current.push(setTimeout(fn, ms));
   }
 
   useEffect(() => {
-    const revealed = [false, false, false, false, false, false];
-    const startTime = Date.now() + 50;
-
-    function animate() {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / TRAVEL_DURATION, 1);
-      const currentX = O_START_X + progress * (O_END_X - O_START_X);
-      const currentY = computeY(progress);
-
-      travelX.setValue(currentX);
-      travelY.setValue(currentY);
-
-      const isRed = currentX >= RED_X_START && currentX <= RED_X_END;
-      const buf = trailBufferRef.current;
-      buf.push({ x: currentX, y: currentY, red: isRed });
-      if (buf.length > TRAIL_LENGTH) buf.shift();
-      setTrailPositions([...buf]);
-
-      if (revealThresholdsRef.current) {
-        revealThresholdsRef.current.forEach((threshold, i) => {
-          if (!revealed[i] && currentX >= threshold) {
-            revealed[i] = true;
-            setTimeout(() => {
-              Animated.timing(letterOpacities[i], {
-                toValue: 1, duration: 150, useNativeDriver: true,
-              }).start();
-            }, 110);
-          }
-        });
-      }
-
-      if (progress < 1) {
-        rafRef.current = requestAnimationFrame(animate);
-      } else {
-        // Absorb trail into landing point over 300ms, then expand dot and fade out
-        const ABSORB_DURATION = 300;
-        const absorbStart = Date.now();
-        const snapshot = trailBufferRef.current.map(p => ({ ...p }));
-        const landingX = O_END_X + DOT_END_X_OFFSET;
-        const landingY = 0;
-
-        function absorbTrail() {
-          const t = Math.min((Date.now() - absorbStart) / ABSORB_DURATION, 1);
-          const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; // ease in-out
-          const absorbed = snapshot.map(p => ({
-            x: p.x + (landingX - p.x) * eased,
-            y: p.y + (landingY - p.y) * eased,
-            red: p.red,
-          }));
-          setTrailPositions(absorbed);
-
-          if (t < 1) {
-            rafRef.current = requestAnimationFrame(absorbTrail);
-          } else {
-            trailBufferRef.current = [];
-            setTrailPositions([]);
-          }
-        }
-
-        rafRef.current = requestAnimationFrame(absorbTrail);
-
-        // Step 1: dot expands to full 'o' size (runs in parallel with absorb)
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: TRAVEL_DURATION,
+      delay: 50,
+      easing: Easing.linear,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (!finished) return;
+      // Trail closes onto the landing point while the dot grows to the 'o' size
+      Animated.parallel([
+        Animated.timing(catchUp, {
+          toValue: 1, duration: ABSORB_DURATION, easing: Easing.inOut(Easing.quad), useNativeDriver: true,
+        }),
         Animated.timing(dotScale, {
           toValue: DOT_TO_O_SCALE, duration: 300, useNativeDriver: true,
-        }).start(() => {
-          // Step 2: 'o' snaps in, dot fades out simultaneously
-          oOpacity.setValue(1);
-          Animated.timing(dotOpacity, {
-            toValue: 0, duration: 150, useNativeDriver: true,
-          }).start(() => startPhase2());
-        });
-      }
-    }
+        }),
+      ]).start(({ finished: landed }) => {
+        if (!landed) return;
+        // The 'o' snaps in, the dot fades out
+        trailOpacity.setValue(0);
+        oOpacity.setValue(1);
+        Animated.timing(dotOpacity, {
+          toValue: 0, duration: 150, useNativeDriver: true,
+        }).start(({ finished: faded }) => faded && startPhase2());
+      });
+    });
 
-    rafRef.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(rafRef.current);
+    return () => {
+      [progress, catchUp, dotScale, dotOpacity].forEach(v => v.stopAnimation());
+      timersRef.current.forEach(clearTimeout);
+    };
   }, []);
 
   function flashWord(opacityAnim, onDone) {
@@ -240,13 +283,13 @@ export default function HomeScreen({ navigation }) {
     dividerScale.setValue(1);
 
     // t=500ms: "react" flashes
-    setTimeout(() => {
+    later(() => {
       flashWord(wordOpacities[0], undefined);
     }, 500);
 
     // t=850ms: "to", "the" step in
     [1, 2].forEach((wordIdx, i) => {
-      setTimeout(() => {
+      later(() => {
         Animated.timing(wordOpacities[wordIdx], {
           toValue: SETTLED_OPACITY, duration: 150, useNativeDriver: true,
         }).start();
@@ -254,13 +297,13 @@ export default function HomeScreen({ navigation }) {
     });
 
     // t=1400ms: "unpredictable" flashes, then phase 3
-    setTimeout(() => {
+    later(() => {
       flashWord(wordOpacities[3], () => startPhase3());
     }, 1400);
   }
 
   function startPhase3() {
-    setTimeout(() => {
+    later(() => {
       Animated.timing(dashOffset, {
         toValue: 0, duration: 400, useNativeDriver: true,
       }).start(() => {
@@ -281,8 +324,6 @@ export default function HomeScreen({ navigation }) {
     computeRevealThresholds();
   }
 
-  const travelTransform = [{ translateX: travelX }, { translateY: travelY }];
-
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={styles.content}>
@@ -298,42 +339,34 @@ export default function HomeScreen({ navigation }) {
           <Animated.Text maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER} style={[styles.title, { opacity: 0 }]} onLayout={onORestLayout}>o</Animated.Text>
 
           {/* Trail dots */}
-          {trailPositions.slice(0, -1).map((pos, i) => {
-            const age = trailPositions.length - 1 - i;
-            const opacity = Math.max(0, 1 - age / TRAIL_LENGTH);
-            const scale = Math.max(0.1, 1 - age / TRAIL_LENGTH);
-            const color = pos.red ? DOT_COLOR_RED : DOT_COLOR_WHITE;
-            return (
-              <View
-                key={i}
-                style={[styles.travellingDot, {
-                  position: 'absolute',
-                  right: 0,
-                  transform: [
-                    { translateX: pos.x + DOT_END_X_OFFSET },
-                    { translateY: pos.y },
-                    { scale },
-                  ],
-                  opacity,
-                  backgroundColor: color,
-                }]}
-              />
-            );
-          })}
+          {motion.trail.map(dot => (
+            <TravellingDot
+              key={dot.age}
+              transform={[
+                { translateX: dot.x },
+                { translateY: dot.y },
+                { translateX: DOT_END_X_OFFSET },
+                { scale: dot.scale },
+              ]}
+              whiteOpacity={dot.whiteOpacity}
+              redOpacity={dot.redOpacity}
+            />
+          ))}
 
           {/* Travelling dot */}
-          <Animated.View style={[
-            styles.travellingDot,
-            {
-              opacity: dotOpacity,
-              transform: [...travelTransform, { translateX: DOT_END_X_OFFSET }, { scale: dotScale }],
-              backgroundColor: trailPositions.length > 0 && trailPositions[trailPositions.length - 1].red
-                ? DOT_COLOR_RED : DOT_COLOR_WHITE,
-            },
-          ]} />
+          <TravellingDot
+            transform={[
+              { translateX: motion.head.x },
+              { translateY: motion.head.y },
+              { translateX: DOT_END_X_OFFSET },
+              { scale: dotScale },
+            ]}
+            whiteOpacity={motion.head.whiteOpacity}
+            redOpacity={motion.head.redOpacity}
+          />
 
-          {/* Settled 'o' */}
-          <Animated.Text maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER} style={[styles.title, styles.travellingO, { opacity: oOpacity, transform: travelTransform }]}>o</Animated.Text>
+          {/* Settled 'o' — only its opacity changes */}
+          <Animated.Text maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER} style={[styles.title, styles.travellingO, { opacity: oOpacity }]}>o</Animated.Text>
         </View>
 
         <Animated.View style={[styles.divider, { transform: [{ scaleX: dividerScale }] }]} />
