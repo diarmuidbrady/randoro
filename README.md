@@ -121,20 +121,16 @@ Upload `android/app/build/outputs/bundle/release/app-release.aab` to Play Consol
 
 ### Expo Go vs the dev build
 
-Randoro depends on native modules, notably `@react-native-picker/picker` (the
-duration and rounds scroll wheels) and the AVAudioSession plugin. **These do not
-work in Expo Go.** The picker wheels render as blank grey rows, and background
-audio routing won't behave correctly.
+Randoro's background audio depends on native config from `app.json` (the iOS
+`UIBackgroundModes: audio` entry and the Android permissions). **Expo Go ignores
+this config**, so beeps stop in the background and on the lock screen there.
 
-Always run the app through the **dev build** produced by `npx expo run:ios`, not
-Expo Go. Once the dev build is installed, `npx expo start` can serve JS reloads
-to it for pure-JS changes (layout, styling, animations). But you must open the
-**dev build** app on the device, not Expo Go. They look identical; only the dev
-build has the native modules.
-
-If the picker wheels show empty grey rows, you're running in the wrong runtime.
-It's not a code bug. Delete Expo Go from the device to avoid connecting to it by
-accident.
+Always run the app through the **dev build** produced by `npx expo run:ios` or
+`npx expo run:android`, not Expo Go. Once the dev build is installed,
+`npx expo start` can serve JS reloads to it for pure-JS changes (layout, styling,
+animations). But you must open the **dev build** app on the device, not Expo Go.
+They look identical; only the dev build has the native config. Delete Expo Go
+from the device to avoid connecting to it by accident.
 
 ## Project structure
 
