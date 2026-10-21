@@ -32,6 +32,8 @@ import { formatTime, formatElapsed } from '../utils/time';
 
 const TICK_MS = 100;
 const FLASH_DURATION_MS = 300;
+const PING_UPDATE_MS = 20;    // how often the ping player reports its position while playing
+const PING_FALLBACK_MS = 400; // flash anyway if the ping never reports playing
 const SILENCE_HANDOVER_S = 3;
 
 export default function RunningScreen({ route, navigation }) {
@@ -56,7 +58,7 @@ export default function RunningScreen({ route, navigation }) {
   // after each beep finishes. Without this, between beeps the session deactivates
   // and iOS suspends the app in background, killing subsequent beeps.
   const playerOpts = { keepAudioSessionActive: true };
-  const pingPlayer       = useAudioPlayer(require('../../assets/sounds/ping.wav'), playerOpts);
+  const pingPlayer       = useAudioPlayer(require('../../assets/sounds/ping.wav'), { ...playerOpts, updateInterval: PING_UPDATE_MS });
   const doublePlayer     = useAudioPlayer(require('../../assets/sounds/double.wav'), playerOpts);
   const doubleRestPlayer = useAudioPlayer(require('../../assets/sounds/double_rest.wav'), playerOpts);
   const warmupPlayer     = useAudioPlayer(require('../../assets/sounds/warmup.wav'), playerOpts);
@@ -186,6 +188,39 @@ export default function RunningScreen({ route, navigation }) {
     ]).start(() => setIsFlashing(false));
   }, [flashEnabled, flashAnim]);
 
+  // ── Ping flash + haptic, in step with the sound ───────────
+  // Bluetooth adds ~200 ms between play() and the ping being heard. The
+  // player's position only moves once the sound is audible, so the flash and
+  // haptic wait for that.
+  const pingCueRef = useRef(null); // fallback timer while a ping cue is pending
+
+  const firePingCue = useCallback(() => {
+    if (!pingCueRef.current) return;
+    clearTimeout(pingCueRef.current);
+    pingCueRef.current = null;
+    if (vibrationEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    triggerFlash();
+  }, [vibrationEnabled, triggerFlash]);
+
+  const queuePingCue = useCallback(() => {
+    clearTimeout(pingCueRef.current);
+    pingCueRef.current = setTimeout(firePingCue, PING_FALLBACK_MS);
+    console.log('DBG ping-request', Date.now());
+  }, [firePingCue]);
+
+  useEffect(() => {
+    const sub = pingPlayer.addListener('playbackStatusUpdate', (status) => {
+      if (status.playing && status.currentTime > 0) {
+        if (pingCueRef.current) console.log('DBG ping-audible', Date.now(), status.currentTime);
+        firePingCue();
+      }
+    });
+    return () => {
+      sub.remove();
+      clearTimeout(pingCueRef.current);
+    };
+  }, [pingPlayer, firePingCue]);
+
   // ── Tick ──────────────────────────────────────────────────
   const tick = useCallback(() => {
     // A status update can arrive just after the workout finishes.
@@ -203,9 +238,8 @@ export default function RunningScreen({ route, navigation }) {
       e => e.type === 'ping' && e.time > lastEventElapsedRef.current && e.time <= current
     );
     if (!isCatchUp && pingsToFire.length > 0) {
-      if (vibrationEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       playSound(pingPlayer);
-      triggerFlash();
+      queuePingCue();
     }
 
     const phaseEvents = events.filter(
@@ -237,7 +271,7 @@ export default function RunningScreen({ route, navigation }) {
   }, [
     events, totalDuration, vibrationEnabled,
     pingPlayer, doublePlayer, doubleRestPlayer, warmupPlayer, cooldownPlayer,
-    playSound, triggerFlash,
+    playSound, queuePingCue,
   ]);
   tickRef.current = tick;
 

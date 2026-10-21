@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
+import { useAudioPlayer } from 'expo-audio';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -108,6 +109,12 @@ const WHITE_ON  = [1, 1, 0, 0, 1, 1];
 const TRAIL_STEP = TRAIL_SPACING * 1000 / 60 / TRAVEL_DURATION;
 const TRAIL_AGES = Array.from({ length: TRAIL_LENGTH - 1 }, (_, i) => i + 1);
 const ABSORB_DURATION = 300;
+
+// The heartbeat's thump lands on the R peak. It's played from the moment the
+// dot first moves, which on Android can be well after mount.
+const R_PEAK_MS = TRAVEL_DURATION * (SEG_Q_END + SEG_R_END) / 2;
+const HEARTBEAT_THUMP_MS = 650; // thump position in heartbeat.wav (see scripts/make-heartbeat.sh)
+const AUDIO_LATENCY_MS = 100;   // play() to sound; tune on device
 // How far the trail's last dot runs behind the head, in travel progress.
 const TRAIL_SPAN = (TRAIL_LENGTH - 1) * TRAIL_STEP;
 // A letter's fade-in, in travel progress (150 ms).
@@ -181,6 +188,7 @@ export default function HomeScreen({ navigation }) {
   const prepareOpacity = useRef(new Animated.Value(0)).current;
 
   const timersRef = useRef([]);
+  const heartbeat = useAudioPlayer(require('../../assets/heartbeat.wav'));
 
   const motionRef = useRef(null);
   if (!motionRef.current) {
@@ -239,6 +247,12 @@ export default function HomeScreen({ navigation }) {
   }
 
   useEffect(() => {
+    const moveId = progress.addListener(({ value }) => {
+      if (value <= 0) return;
+      progress.removeListener(moveId);
+      later(() => heartbeat.play(), Math.max(0, R_PEAK_MS - HEARTBEAT_THUMP_MS - AUDIO_LATENCY_MS));
+    });
+
     Animated.timing(progress, {
       toValue: 1,
       duration: TRAVEL_DURATION,
@@ -268,6 +282,7 @@ export default function HomeScreen({ navigation }) {
     return () => {
       [progress, catchUp, dotScale, dotOpacity].forEach(v => v.stopAnimation());
       timersRef.current.forEach(clearTimeout);
+      progress.removeAllListeners();
     };
   }, []);
 
