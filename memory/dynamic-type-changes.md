@@ -1,5 +1,9 @@
 # Randoro — Dynamic Type Support
 
+> **Written July 2026.** The approach and the "Notes and limitations" rules still apply. Two sections are out of date:
+> - **HomeScreen:** the dot animation was rewritten in October 2026 (native-driven, see project_technical.md). The wordmark is still pinned at 1x.
+> - **SetupScreen:** the native `Picker` was replaced by `WheelPicker`, whose labels are capped at 1.5x.
+
 React Native `Text` scales with the user's iOS text-size setting by default (`allowFontScaling` is `true`). So the app's text was already growing — the failures came from layout that assumed default-size text: fixed widths, single-line rows, and animation geometry derived from a hard-coded font size. The fix is therefore not "enable scaling" but: let text scale wherever the layout can absorb it, make containers adapt (wrap, shrink, grow in height), and deliberately cap or shrink-to-fit the few elements whose geometry cannot adapt. All timer, audio, animation, navigation, and state logic is untouched; changes are limited to `Text` props (`maxFontSizeMultiplier`, `numberOfLines`, `adjustsFontSizeToFit`) and small additions to existing styles (`flexWrap`, `flexShrink`, `minWidth`, `gap`, `textAlign`).
 
 For reference, iOS text-size multipliers range from ~0.82 (xSmall) through 1.0 (Large, the default) to ~1.35 (xxxLarge), and up to ~3.1 at the largest Accessibility size (AX5).

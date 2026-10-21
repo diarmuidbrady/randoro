@@ -1,14 +1,14 @@
 # Memory Index
 
-Last synced to the repo `memory/` folder: 16 Aug 2026.
+Engineering notes for Randoro. Last updated 21 Oct 2026.
 
-## Living (update as the project changes)
-- [Project Context](project_context.md) — What Randoro is, current state, direction
-- [Technical Decisions](project_technical.md) — Stack and key technical decisions
+## Current (kept in step with the code)
+- [Project Context](project_context.md) — What Randoro is, current state, product direction
+- [Technical Decisions](project_technical.md) — Stack, builds, sounds, home animation and why
+- [Audio Session Findings](project_audio_session.md) — How audio works on iOS and Android, what's ruled out, open questions
 
-## Reference (write-once records of solved problems)
-- [Audio Session Findings](project_audio_session.md) — Distilled: A3102 routing + background audio, what's ruled out
-- [Audio Journey Log](project_audio_journey_log.md) — Full chronological record of the Bluetooth/background audio investigation
-- [Dynamic Type Changes](dynamic-type-changes.md) — How Dynamic Type support was added across the screens
-- [Expo Go Native Modules Gotcha](project_expo_go_native_modules.md) — Picker wheels blank in Expo Go; use the dev build from expo run:ios
-- [Ghost Beep Fix](project_ghost_beep_fix.md) — Flash-with-no-sound was an un-awaited seekTo before play; use the status listener to debug audio
+## History (dated records; the code may have moved on)
+- [Audio Journey Log](project_audio_journey_log.md) — Every experiment behind the iOS background and Bluetooth audio setup (Apr–Oct 2026)
+- [Dynamic Type Changes](dynamic-type-changes.md) — How Dynamic Type support was added, and the rules it set (Jul 2026)
+- [Ghost Beep Fix](project_ghost_beep_fix.md) — Flash with no sound from an un-awaited rewind; debug audio with the status listener
+- [Expo Go Native Modules Gotcha](project_expo_go_native_modules.md) — Blank picker wheels in Expo Go; check the runtime first

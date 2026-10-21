@@ -30,3 +30,5 @@ Verified: a full 3x3 min workout with zero missing beeps (before the fix, one wo
 **Red herring:** `[MediaToolbox] FigFilePlayer signalled err=-12864` prints on every beep including good ones. Not related.
 
 expo-audio version 1.1.1. Related: [[project_expo_go_native_modules]].
+
+**Update (21 Oct 2026):** `playSound` now always awaits `seekTo(0)`; the `currentTime > 0` check was dropped. On Android, `seekTo` returns before the seek finishes, so the await guards less there than it does on iOS.

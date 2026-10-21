@@ -7,6 +7,8 @@ metadata:
   originSessionId: a3b7ed7e-c584-4e86-b50f-d1bfef5975c3
 ---
 
+> **Historical (July 2026).** The picker and the AVAudioSession plugin have since been removed. The app still needs the dev build for background audio, because Expo Go ignores app.json's native config. The lasting lesson: if the same code behaves differently, check which runtime it's running in first.
+
 Randoro depends on native modules that **do not work in Expo Go**: `@react-native-picker/picker` (the duration/rounds scroll wheels) and the AVAudioSession plugin (background audio routing).
 
 **Symptom:** the duration/rounds picker wheels render as empty grey rows — no numbers. This is NOT a code bug. It means the app is running in Expo Go, whose runtime lacks the native picker module, so the JS `<Picker>` loads but its native `UIPickerView` backing view isn't present.

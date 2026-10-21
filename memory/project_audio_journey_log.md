@@ -5,6 +5,8 @@ A chronological record of every distinct phase in solving (or attempting to solv
 1. Audio not routing to the Anker Soundcore A3102 Bluetooth speaker
 2. Background/lockscreen audio failure
 
+> **Historical record (April–October 2026, iOS).** Each stage describes the code as it was then. For how audio works now, see [project_audio_session.md](project_audio_session.md).
+
 ---
 
 ## Session 1 — Initial investigation
@@ -423,3 +425,28 @@ Root cause not yet isolated; possibly related to `setAudioModeAsync` at the top 
 **Decision.** Accept the on-open pause. v1 workflow: open app → setup workout (resume Spotify if needed) → press Start → mixing works.
 
 **Commit.** N/A — no code change.
+
+---
+
+## Session 3 — Plugin removal (2026-10-15)
+
+### Stage 23: Remove the withAudioSession plugin
+
+**Situation.** A source review showed the plugin was redundant:
+- `setAudioModeAsync` sets the same category and options.
+- expo-audio's `play()` activates the session itself.
+- expo-av, linked natively but unused, also reset the category to `.ambient` at React Native startup. (expo-av was removed from the project on 16 Oct.)
+
+The plugin's only unique effect was activating the session at launch, and an inactive session can't interrupt other apps.
+
+**Change made.** Removed the plugin from app.json, deleted `plugins/withAudioSession.js`, removed the injected block from `ios/randoro/AppDelegate.swift`, and updated the RunningScreen comment.
+
+**Outcome.** Spotify no longer pauses when Randoro opens. This reverses the Stage 22 decision to accept that pause.
+
+**Commit.** 627f2de
+
+---
+
+## Open question (noted 2026-10-21)
+
+Stage 5 found that `.mixWithOthers` stops the A3102 accepting Randoro's audio. Stage 18 got the A3102 working, but under `doNotMix`. Stage 19 switched to `mixWithOthers`, and its test only checked mixing with Spotify. The shipped setup (`mixWithOthers` plus the 0.05 drone) has no logged test on the A3102 with no other app playing.

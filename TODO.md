@@ -37,4 +37,3 @@ Feature ideas and known work, distilled and concise. The user needs behind these
 
 ## Release
 - App icon: finalise QRS waveform design, integrate into the build.
-- App Store submission.
