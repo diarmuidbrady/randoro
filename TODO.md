@@ -4,9 +4,7 @@ Feature ideas and known work, distilled and concise. The user needs behind these
 
 ## Bugs
 ### Android
-- **Audio Playback**: The audio drops out intermittently
-- **Duration picker**: The picker displays partially at the bottom of the screen making it difficult to choose. Also unpleasant to look at.
-- **Home animation**: The dots move chaotically and do not resemble the ECG trace motion. At the end, the o in randoro disappears after appearing momentarily.
+- **Home animation**: confirm on a phone that the 'o' in randoro no longer disappears after landing.
 
 ## Feature ideas
 
@@ -27,8 +25,7 @@ Feature ideas and known work, distilled and concise. The user needs behind these
 ### Animation
 - Make dot and jet trail thinner.
 - Jet trail should span ~25% of screen width.
-- Jet trail should be smoother — more trail points, closer to a continuous comet trail.
-- Add heartbeat thump sound at the R peak moment.
+- Jet trail should be smoother. More dots slow the start (each adds native animation work), so an SVG line trail is the better route.
 - Add the T wave back once P and QRS feel polished.
 - SVG line trail instead of dot trail, so the waveform shape is visible as it draws.
 
