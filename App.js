@@ -1,4 +1,5 @@
 import 'react-native-gesture-handler';
+import { setAudioModeAsync } from 'expo-audio';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -7,6 +8,15 @@ import SetupScreen from './src/screens/SetupScreen';
 import RunningScreen from './src/screens/RunningScreen';
 
 const Stack = createStackNavigator();
+
+// Mix with other apps' audio, keep playing in the background, and ignore the
+// iOS silent switch so beeps always sound.
+setAudioModeAsync({
+  playsInSilentMode: true,
+  shouldPlayInBackground: true,
+  allowsRecording: false,
+  interruptionMode: 'mixWithOthers',
+}).catch(() => {});
 
 export default function App() {
   return (
