@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useAudioPlayer } from 'expo-audio';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -11,112 +11,111 @@ const TRAVEL_DURATION = 1750;
 
 const O_START_X = -SCREEN_WIDTH * 0.65;
 const O_END_X = 0;
+const TRAVEL_PX = O_END_X - O_START_X;
 const DOT_END_X_OFFSET = -13; // tune this to shift only the dot left/right at landing
+// The landing point's centre, from the title row's top-right corner (before DOT_END_X_OFFSET).
+const DOT_CENTRE_RIGHT = 5;
+const DOT_CENTRE_TOP = FONT_SIZE * 0.62 + 5;
 
-const DOT_SIZE = 10;
+// The trace is the ECG from the app icon (randoro-icon.svg: an 813-unit square,
+// baseline at y 471), up to where its T wave starts. Points are [x, y] in icon units.
+const ICON_BASELINE = 471;
+const ICON_RED_FROM = 362.7; // the R spike leaves the baseline...
+const ICON_R_PEAK = 406;
+const ICON_RED_TO = 443.6;   // ...and returns to it
+const ICON_TRACE_END = 607;
+const ICON_STROKE = 8.5;
+// P wave: the icon's quadratic curve from (103, 471) to (210, 471), control point (156.5, 358).
+const ICON_P_WAVE = Array.from({ length: 13 }, (_, i) => {
+  const t = i / 12;
+  return [103 + 107 * t, ICON_BASELINE - 2 * t * (1 - t) * (ICON_BASELINE - 358)];
+});
+const ICON_TRACE = [
+  [0, ICON_BASELINE],
+  ...ICON_P_WAVE,
+  [305, ICON_BASELINE],
+  [350, 579],                     // Q
+  [ICON_RED_FROM, ICON_BASELINE],
+  [ICON_R_PEAK, 101.5],           // R
+  [ICON_RED_TO, ICON_BASELINE],
+  [464, 672],                     // S
+  [515, ICON_BASELINE],
+  [ICON_TRACE_END, ICON_BASELINE],
+];
+const ICON_SCALE = TRAVEL_PX / ICON_TRACE_END;
+
+// The trace as lookup tables over travel progress (0→1), interpolated by the
+// native driver. Driving it from JS dropped frames on Android.
+const PATH_INPUT = ICON_TRACE.map(([x]) => x / ICON_TRACE_END);
+const PATH_Y = ICON_TRACE.map(([, y]) => (y - ICON_BASELINE) * ICON_SCALE);
+const TRACE_TOP = -Math.min(...PATH_Y);
+const TRACE_BOTTOM = Math.max(...PATH_Y);
+
+// The line has the icon's stroke width, and the dot matches it so the two read as one.
+const LINE_WIDTH = ICON_STROKE * ICON_SCALE;
+const DOT_SIZE = LINE_WIDTH;
 // Scale factor to grow dot up to roughly the 'o' glyph diameter
-const DOT_TO_O_SCALE = FONT_SIZE / DOT_SIZE * 0.54; // 0.72 tunes for glyph vs font-size ratio
+const DOT_TO_O_SCALE = FONT_SIZE / DOT_SIZE * 0.54;
 
-
-// QRS waveform segment boundaries (as fraction of total travel 0→1)
-// Flat → P → PR → Q → R → S → Flat
-// Q dips at 'n' (~0.40), R peaks at 'd' (~0.54), S ends at 'o' (~0.68)
-const SEG_P_START   = 0.08;
-const SEG_P_END     = 0.20;
-const SEG_PR_END    = 0.53;
-const SEG_Q_END     = 0.63;
-const SEG_R_END     = 0.73;
-const SEG_S_END     = 0.83;
-// remainder is flat baseline to end
-
-const AMP = 20;
-const P_HEIGHT  = AMP * 0.25;
-const R_HEIGHT  = AMP * 6.0;
-const Q_DEPTH   = AMP * 2.0;
-const S_DEPTH   = AMP * 2.0;
-
-const TRAIL_LENGTH = 30;
-const TRAIL_SPACING = 2; // frames between trail dots; LENGTH × SPACING sets the trail's length
+const BACKGROUND = '#1C1C1E';
 const DOT_COLOR_WHITE = '#FFFFFF';
 const DOT_COLOR_RED   = '#EF4444';
 
-function computeY(progress) {
-  const p = progress;
-
-  function local(start, end) {
-    return (p - start) / (end - start);
-  }
-
-  // Flat lead-in
-  if (p < SEG_P_START) return 0;
-
-  // P wave: smooth rounded bump upward (sine arch)
-  if (p < SEG_P_END) {
-    const t = local(SEG_P_START, SEG_P_END);
-    return -P_HEIGHT * Math.sin(t * Math.PI);
-  }
-
-  // PR segment: flat
-  if (p < SEG_PR_END) return 0;
-
-  // Q dip: sharp V down
-  if (p < SEG_Q_END) {
-    const t = local(SEG_PR_END, SEG_Q_END);
-    return t < 0.5
-      ? Q_DEPTH * (t / 0.5)
-      : Q_DEPTH * (1 - (t - 0.5) / 0.5);
-  }
-
-  // R peak: sharp V up
-  if (p < SEG_R_END) {
-    const t = local(SEG_Q_END, SEG_R_END);
-    return t < 0.5
-      ? -R_HEIGHT * (t / 0.5)
-      : -R_HEIGHT * (1 - (t - 0.5) / 0.5);
-  }
-
-  // S dip: sharp V down
-  if (p < SEG_S_END) {
-    const t = local(SEG_R_END, SEG_S_END);
-    return t < 0.5
-      ? S_DEPTH * (t / 0.5)
-      : S_DEPTH * (1 - (t - 0.5) / 0.5);
-  }
-
-  // Flat tail
-  return 0;
-}
-
-// The ECG path as lookup tables over travel progress (0→1), interpolated by the
-// native driver. Driving it from JS dropped frames on Android.
-const SEGMENT_CORNERS = [
-  SEG_P_START, SEG_P_END, SEG_PR_END,
-  (SEG_PR_END + SEG_Q_END) / 2, SEG_Q_END,
-  (SEG_Q_END + SEG_R_END) / 2, SEG_R_END,
-  (SEG_R_END + SEG_S_END) / 2, SEG_S_END,
-];
-const P_WAVE_SAMPLES = Array.from({ length: 13 }, (_, i) => SEG_P_START + ((SEG_P_END - SEG_P_START) * i) / 12);
-const PATH_INPUT = [...new Set([0, 1, ...SEGMENT_CORNERS, ...P_WAVE_SAMPLES])].sort((a, b) => a - b);
-const PATH_Y = PATH_INPUT.map(computeY);
-
 // The dot is red on the R spike only.
 const RED_EDGE = 0.0001;
-const RED_INPUT = [0, SEG_Q_END - RED_EDGE, SEG_Q_END, SEG_R_END, SEG_R_END + RED_EDGE, 1];
+const RED_FROM = ICON_RED_FROM / ICON_TRACE_END;
+const RED_TO = ICON_RED_TO / ICON_TRACE_END;
+const RED_INPUT = [0, RED_FROM - RED_EDGE, RED_FROM, RED_TO, RED_TO + RED_EDGE, 1];
 const RED_ON    = [0, 0, 1, 1, 0, 0];
 const WHITE_ON  = [1, 1, 0, 0, 1, 1];
 
-// Trail dots sit TRAIL_SPACING 60 fps frames of travel behind each other.
-const TRAIL_STEP = TRAIL_SPACING * 1000 / 60 / TRAVEL_DURATION;
-const TRAIL_AGES = Array.from({ length: TRAIL_LENGTH - 1 }, (_, i) => i + 1);
+// The trail is static SVG strokes through the same points the dot follows,
+// drawn up to the dot by dashes and faded out behind it by an overlay. Like the
+// icon, it's round-ended white strokes with the red R spike drawn on top.
+const TRAIL_PX = SCREEN_WIDTH * 0.25;
+const TRAIL_PAD = LINE_WIDTH;
+const TRAIL_W = TRAVEL_PX + 2 * TRAIL_PAD;
+const TRAIL_H = TRACE_TOP + TRACE_BOTTOM + 2 * TRAIL_PAD;
+const lineX = p => TRAIL_PAD + p * TRAVEL_PX;
+const LINE_POINTS = PATH_INPUT.map((p, i) => [lineX(p), TRAIL_PAD + TRACE_TOP + PATH_Y[i]]);
+// Distance along the line to each point. Between points it grows linearly
+// with progress, like the dot's x and y, so a dash can end exactly at the dot.
+const LINE_LENGTHS = [0];
+for (let i = 1; i < LINE_POINTS.length; i++) {
+  const [[x0, y0], [x1, y1]] = [LINE_POINTS[i - 1], LINE_POINTS[i]];
+  LINE_LENGTHS.push(LINE_LENGTHS[i - 1] + Math.hypot(x1 - x0, y1 - y0));
+}
+// A stroke over points from..to, drawn as one dash longer than the stroke and
+// a gap twice that. An offset of dash - length shows it up to that length.
+// Before the dot reaches it, the offset sits past the dash's end, so no
+// zero-length dash (a round dot) shows.
+function lineStroke(from, to, colour) {
+  const length = LINE_LENGTHS[to] - LINE_LENGTHS[from];
+  const dash = length + 1;
+  return {
+    colour,
+    d: 'M' + LINE_POINTS.slice(from, to + 1).map(([x, y]) => `${x},${y}`).join(' L'),
+    dash,
+    offsets: LINE_LENGTHS.map((l, i) => (i < from ? dash + 1 : dash - Math.min(l - LINE_LENGTHS[from], length))),
+  };
+}
+const RED_FROM_POINT = ICON_TRACE.findIndex(([x]) => x === ICON_RED_FROM);
+const RED_TO_POINT = ICON_TRACE.findIndex(([x]) => x === ICON_RED_TO);
+const LINE_STROKES = [
+  lineStroke(0, RED_FROM_POINT, DOT_COLOR_WHITE),
+  lineStroke(RED_TO_POINT, ICON_TRACE.length - 1, DOT_COLOR_WHITE),
+  lineStroke(RED_FROM_POINT, RED_TO_POINT, DOT_COLOR_RED),
+];
+const COVER_OVERLAP = 2; // the cover tucks under the fade's opaque end so no seam shows
 const ABSORB_DURATION = 300;
 
 // The heartbeat's thump lands on the R peak. It's played from the moment the
 // dot first moves, which on Android can be well after mount.
-const R_PEAK_MS = TRAVEL_DURATION * (SEG_Q_END + SEG_R_END) / 2;
+const R_PEAK_MS = TRAVEL_DURATION * ICON_R_PEAK / ICON_TRACE_END;
 const HEARTBEAT_THUMP_MS = 650; // thump position in heartbeat.wav (see scripts/make-heartbeat.sh)
 const AUDIO_LATENCY_MS = 100;   // play() to sound; tune on device
-// How far the trail's last dot runs behind the head, in travel progress.
-const TRAIL_SPAN = (TRAIL_LENGTH - 1) * TRAIL_STEP;
+// How far behind the dot (967 ms) each letter starts to appear, in travel progress.
+const LETTER_LAG = 967 / TRAVEL_DURATION;
 // A letter's fade-in, in travel progress (150 ms).
 const LETTER_FADE = 150 / TRAVEL_DURATION;
 
@@ -174,7 +173,7 @@ export default function HomeScreen({ navigation }) {
   const oRestLayout = useRef(null);
 
   const progress     = useRef(new Animated.Value(0)).current; // travel, 0→1
-  const catchUp      = useRef(new Animated.Value(0)).current; // trail closes onto the landing point, 0→1
+  const catchUp      = useRef(new Animated.Value(0)).current; // trail and letter lag close onto the landing point, 0→1
   const trailOpacity = useRef(new Animated.Value(1)).current;
 
   const dotOpacity = useRef(new Animated.Value(1)).current;
@@ -193,37 +192,41 @@ export default function HomeScreen({ navigation }) {
   const motionRef = useRef(null);
   if (!motionRef.current) {
     const head = pathAt(progress);
+    const clamp = { extrapolate: 'clamp' };
+    const lineHeadX = progress.interpolate({ inputRange: [0, 1], outputRange: [lineX(0), lineX(1)], ...clamp });
     motionRef.current = {
-      // Progress of the trail's last dot.
-      tail: Animated.subtract(progress, catchUp.interpolate({ inputRange: [0, 1], outputRange: [TRAIL_SPAN, 0] })),
+      // Progress at which letters appear.
+      reveal: Animated.subtract(progress, catchUp.interpolate({ inputRange: [0, 1], outputRange: [LETTER_LAG, 0] })),
       head: {
         ...head,
         whiteOpacity: Animated.multiply(dotOpacity, head.white),
         redOpacity: Animated.multiply(dotOpacity, head.red),
       },
-      trail: TRAIL_AGES.map(age => {
-        const lag = catchUp.interpolate({ inputRange: [0, 1], outputRange: [age * TRAIL_STEP, 0] });
-        const dot = pathAt(Animated.subtract(progress, lag));
-        const fade = Animated.multiply(trailOpacity, 1 - age / TRAIL_LENGTH);
-        return {
-          age,
-          ...dot,
-          scale: Math.max(0.1, 1 - age / TRAIL_LENGTH),
-          whiteOpacity: Animated.multiply(fade, dot.white),
-          redOpacity: Animated.multiply(fade, dot.red),
-        };
-      }),
+      trail: {
+        dashOffsets: LINE_STROKES.map(stroke => (
+          progress.interpolate({ inputRange: PATH_INPUT, outputRange: stroke.offsets, ...clamp })
+        )),
+        // The fade spans TRAIL_PX up to the dot and shrinks into it on landing.
+        // scaleX works about the view's centre, so the shift makes up half the shrink.
+        fadeX: Animated.add(lineHeadX, catchUp.interpolate({ inputRange: [0, 1], outputRange: [-TRAIL_PX, -TRAIL_PX / 2] })),
+        fadeScale: catchUp.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+        // The cover hides the line behind the fade.
+        coverX: Animated.add(lineHeadX, catchUp.interpolate({
+          inputRange: [0, 1],
+          outputRange: [COVER_OVERLAP - TRAIL_PX - TRAIL_W, COVER_OVERLAP - TRAIL_W],
+        })),
+      },
     };
   }
   const motion = motionRef.current;
   const [isReady, setIsReady] = useState(false); // GET READY is tappable once visible
   const [revealAt, setRevealAt] = useState(null); // travel progress at each letter's centre
 
-  // Each letter fades in as the end of the trail passes its centre. Driven by
-  // the same native values as the trail, so they stay in step on Android.
+  // Each letter fades in LETTER_LAG after the dot passes its centre. Driven by
+  // the same native values as the dot, so they stay in step on Android.
   const letterOpacities = useMemo(() => letterLayouts.current.map((_, i) => (
     revealAt
-      ? motion.tail.interpolate({
+      ? motion.reveal.interpolate({
           inputRange: [revealAt[i], revealAt[i] + LETTER_FADE],
           outputRange: [0, 1],
           extrapolate: 'clamp',
@@ -249,8 +252,7 @@ export default function HomeScreen({ navigation }) {
   useEffect(() => {
     const moveId = progress.addListener(({ value }) => {
       if (value <= 0) return;
-      progress.removeListener(moveId);
-      later(() => heartbeat.play(), Math.max(0, R_PEAK_MS - HEARTBEAT_THUMP_MS - AUDIO_LATENCY_MS));
+      progress.removeListener(moveId);      later(() => heartbeat.play(), Math.max(0, R_PEAK_MS - HEARTBEAT_THUMP_MS - AUDIO_LATENCY_MS));
     });
 
     Animated.timing(progress, {
@@ -343,6 +345,37 @@ export default function HomeScreen({ navigation }) {
       <View style={styles.content}>
 
         <View style={styles.titleRow}>
+          {/* Trail, beneath the letters. The overlays are background-coloured, so they only hide the line. */}
+          <Animated.View style={[styles.trail, { opacity: trailOpacity }]}>
+            <Svg width={TRAIL_W} height={TRAIL_H}>
+              {LINE_STROKES.map((stroke, i) => (
+                <AnimatedPath
+                  key={i}
+                  d={stroke.d}
+                  fill="none"
+                  stroke={stroke.colour}
+                  strokeWidth={LINE_WIDTH}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeDasharray={[stroke.dash, 2 * stroke.dash]}
+                  strokeDashoffset={motion.trail.dashOffsets[i]}
+                />
+              ))}
+            </Svg>
+            <Animated.View style={[styles.trailCover, { transform: [{ translateX: motion.trail.coverX }] }]} />
+            <Animated.View style={[styles.trailFade, { transform: [{ translateX: motion.trail.fadeX }, { scaleX: motion.trail.fadeScale }] }]}>
+              <Svg width={TRAIL_PX} height={TRAIL_H}>
+                <Defs>
+                  <LinearGradient id="trailFade" x1={0} y1={0} x2={1} y2={0}>
+                    <Stop offset={0} stopColor={BACKGROUND} stopOpacity={1} />
+                    <Stop offset={1} stopColor={BACKGROUND} stopOpacity={0} />
+                  </LinearGradient>
+                </Defs>
+                <Rect width={TRAIL_PX} height={TRAIL_H} fill="url(#trailFade)" />
+              </Svg>
+            </Animated.View>
+          </Animated.View>
+
           <Animated.Text maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER} style={[styles.title, { opacity: letterOpacities[0] }]} onLayout={e => onLetterLayout(0, e)}>r</Animated.Text>
           <Animated.Text maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER} style={[styles.title, { opacity: letterOpacities[1] }]} onLayout={e => onLetterLayout(1, e)}>a</Animated.Text>
           <Animated.Text maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER} style={[styles.title, { opacity: letterOpacities[2] }]} onLayout={e => onLetterLayout(2, e)}>n</Animated.Text>
@@ -351,21 +384,6 @@ export default function HomeScreen({ navigation }) {
           <Animated.Text maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER} style={[styles.title, { opacity: letterOpacities[5] }]} onLayout={e => onLetterLayout(5, e)}>r</Animated.Text>
           {/* Invisible placeholder keeps row width = "randoro" for correct centering */}
           <Animated.Text maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER} style={[styles.title, { opacity: 0 }]} onLayout={onORestLayout}>o</Animated.Text>
-
-          {/* Trail dots */}
-          {motion.trail.map(dot => (
-            <TravellingDot
-              key={dot.age}
-              transform={[
-                { translateX: dot.x },
-                { translateY: dot.y },
-                { translateX: DOT_END_X_OFFSET },
-                { scale: dot.scale },
-              ]}
-              whiteOpacity={dot.whiteOpacity}
-              redOpacity={dot.redOpacity}
-            />
-          ))}
 
           {/* Travelling dot */}
           <TravellingDot
@@ -439,7 +457,7 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1C1C1E',
+    backgroundColor: BACKGROUND,
     paddingHorizontal: 40,
     justifyContent: 'space-between',
     overflow: 'visible',
@@ -463,13 +481,37 @@ const styles = StyleSheet.create({
   },
   travellingDot: {
     position: 'absolute',
-    right: 0,
-    top: FONT_SIZE * 0.62,
+    right: DOT_CENTRE_RIGHT - DOT_SIZE / 2,
+    top: DOT_CENTRE_TOP - DOT_SIZE / 2,
     width: DOT_SIZE,
     height: DOT_SIZE,
     borderRadius: DOT_SIZE / 2,
     backgroundColor: DOT_COLOR_WHITE,
     alignSelf: 'center',
+  },
+  // Placed so the line's points land on the dot's centre.
+  trail: {
+    position: 'absolute',
+    right: DOT_CENTRE_RIGHT - DOT_END_X_OFFSET - TRAIL_PAD,
+    top: DOT_CENTRE_TOP - TRACE_TOP - TRAIL_PAD,
+    width: TRAIL_W,
+    height: TRAIL_H,
+    overflow: 'hidden',
+  },
+  trailCover: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: TRAIL_W,
+    height: TRAIL_H,
+    backgroundColor: BACKGROUND,
+  },
+  trailFade: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: TRAIL_PX,
+    height: TRAIL_H,
   },
   travellingO: {
     position: 'absolute',

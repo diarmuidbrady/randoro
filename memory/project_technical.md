@@ -3,7 +3,7 @@ name: Technical Decisions
 description: Stack, build setup and the non-obvious technical decisions behind the code
 type: project
 ---
-Current as of 21 Oct 2026. Audio decisions are in [[project_audio_session]].
+Current as of 25 Oct 2026. Audio decisions are in [[project_audio_session]].
 
 ## Stack
 
@@ -47,10 +47,12 @@ Current as of 21 Oct 2026. Audio decisions are in [[project_audio_session]].
 
 ## Home animation
 
-- Native-driven: a single `progress` value (0 → 1) runs over 1750 ms. The ECG path is a set of interpolation lookup tables built from `computeY`, so the native driver runs it without dropping frames on Android.
-- The trail is 30 dots spaced 2 frames apart. Each dot adds about 15 native animated nodes, all set up before the first frame moves. On the A14 debug build the pause before movement was 60 dots → 1.18 s, 30 → 0.50 s, 12 → 0.41 s. A smoother trail should come from an SVG line, not more dots.
+- Native-driven: a single `progress` value (0 → 1) runs over 1750 ms. The trace is the app icon's ECG (`ICON_TRACE`, icon units up to where the T wave starts), scaled evenly to the travel width so its slopes match the icon. Its points become interpolation lookup tables, so the native driver runs it without dropping frames on Android.
+- The trail is three static SVG strokes with round ends, like the icon: white, white, and the red R spike drawn on top. A native-animated `strokeDashoffset` draws each one up to the dot. Between points, distance along the line grows linearly with progress, so the line ends exactly at the dot. The dot is the line's width, so the two read as one.
+- The fade is a background-coloured gradient that rides with the dot, plus a solid cover behind it. Both sit beneath the letters and only work on the solid `#1C1C1E` background. On landing, the fade scales down into the dot.
+- On Android, react-native-svg redraws the whole SVG into a new bitmap on every prop change, so the dash costs one redraw per frame. A trail of animated dots costs more: each dot adds native nodes that are set up before the first frame moves. On the A14 debug build (cold start, first render to first movement) the pause is about 0.88 s, with ~100 frames rendered and 4–6 janky.
 - On Android the native animation clock starts at its first UI frame, which can be well after mount. Anything that must line up with the dot has to follow the dot's own value, not JS timers started at mount:
-  - Letters fade in from the trail's tail position.
+  - Letters fade in a fixed 967 ms (`LETTER_LAG`) behind the dot.
   - The heartbeat is scheduled from the dot's first movement, aiming its thump at the R peak (`AUDIO_LATENCY_MS` is a tuning guess).
 - The dot is red only on the R spike. White and red are stacked opacity layers, because the native driver can't animate colour.
 

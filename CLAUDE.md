@@ -51,7 +51,7 @@ Use `expo-audio`, never `expo-av`, which is deprecated and adds a microphone per
 
 ## Other non-obvious decisions
 
-- **Home animation** (`HomeScreen.js`) runs on the native driver from a single `progress` value. On Android the native clock starts at the first UI frame, which can come well after mount. Anything that must line up with the dot (letter reveals, the heartbeat sound) has to key off the dot's animated value, not JS timers started at mount. Adding trail dots adds native node setup time. A smoother trail should come from an SVG line, not more dots.
+- **Home animation** (`HomeScreen.js`) runs on the native driver from a single `progress` value. On Android the native clock starts at the first UI frame, which can come well after mount. Anything that must line up with the dot (letter reveals, the heartbeat sound) has to key off the dot's animated value, not JS timers started at mount. The trace is the app icon's ECG. The trail is static SVG strokes, drawn up to the dot by a native-animated `strokeDashoffset` and faded by a background-coloured overlay, so it relies on the screen's solid background.
 - **WheelPicker** is a pure-JS ScrollView wheel, so it's the same on iOS and Android. It handles both `onMomentumScrollEnd` and `onScrollEndDrag`, because Android skips the momentum event after a slow drag.
 - **Dynamic Type:** text scales by default. Make layouts absorb it (`flexShrink`, `flexWrap` + `minWidth`). Use `numberOfLines={1}` + `adjustsFontSizeToFit` only for short fixed-format strings such as times and button captions. Use `maxFontSizeMultiplier` caps only on the wordmark (1x), icon glyphs (2x), the GET READY label (2x) and WheelPicker labels (1.5x), never on informational text. Details are in `memory/dynamic-type-changes.md`.
 

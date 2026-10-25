@@ -20,11 +20,7 @@ No known bugs at this moment
 - **Explainer content:** short instructions or video for each skill, so users picking skills know how to perform them.
 
 ### Animation
-- Make dot and jet trail thinner.
-- Jet trail should span ~25% of screen width.
-- Jet trail should be smoother. More dots slow the start (each adds native animation work), so an SVG line trail is the better route.
-- Add the T wave back once P and QRS feel polished.
-- SVG line trail instead of dot trail, so the waveform shape is visible as it draws.
+- Add the T wave back once P and QRS feel polished. The icon has one: extend `ICON_TRACE` past x 607.
 
 ### Music
 - Control Spotify or a preferred music app from within Randoro without leaving the app.
