@@ -11,13 +11,13 @@ const COUNTDOWN_BEEPS = [
  *
  * @param {number} workDuration - Total round duration in seconds
  * @param {number} n            - Number of pings to generate
- * @param {number} minGap       - Minimum seconds between consecutive pings
+ * @param {number} minGap       - Combo (execution) seconds, the fixed part of each gap
  * @returns {number[]}          - Ping times relative to round start (seconds)
  */
 function generatePingTimes(workDuration, n, minGap) {
   // n pings make n + 1 gaps: round start → first ping, between pings, and
-  // last ping → round end. Each gap is at least minGap, so no ping lands on
-  // the round start or round end sounds.
+  // last ping → round end. Each gap is minGap plus a random share of the time
+  // left over (the wait), so no ping lands on the round start or round end sounds.
   const gaps = n + 1;
   if (n < 1 || minGap < 0 || workDuration < gaps * minGap) return [];
 
@@ -51,8 +51,8 @@ function generatePingTimes(workDuration, n, minGap) {
  * @param {number} config.restDuration  - Rest duration between rounds (seconds)
  * @param {boolean} config.restFirst    - If true, rest comes before each work round
  * @param {number} config.cooldown      - Cooldown duration (seconds)
- * @param {number} config.avgFrequency  - Average seconds between pings
- * @param {number} config.minGap        - Minimum seconds between pings
+ * @param {number} config.avgFrequency  - Average wait (anticipation) seconds per gap, on top of minGap
+ * @param {number} config.minGap        - Combo (execution) seconds, the fixed part of each gap
  * @param {boolean} config.randomBeeps  - If false, no pings: a plain interval timer
  *
  * @returns {{ events: object[], phases: object[], totalDuration: number }}
@@ -70,6 +70,7 @@ export function generateWorkout(config) {
     randomBeeps = true,
   } = config;
 
+  // Rounding down means the real average wait lands a little under avgFrequency.
   const n = Math.max(1, Math.floor(workDuration / (avgFrequency + minGap)));
   const events = [];
   const phases = [];
