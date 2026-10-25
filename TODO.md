@@ -3,8 +3,7 @@
 Feature ideas and known work, distilled and concise. The user needs behind these live in [USER_NEEDS.md](USER_NEEDS.md). The guiding constraint on every feature: keep it simple, a user should start a workout in a few clicks.
 
 ## Bugs
-### Android
-- **Home animation**: confirm on a phone that the 'o' in randoro no longer disappears after landing.
+No known bugs at this moment
 
 ## Feature ideas
 

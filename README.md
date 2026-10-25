@@ -59,7 +59,7 @@ npx expo run:ios --device
 2. Distribute → App Store Connect
 3. Window → Organizer to view archives
 
-The build number increments per archive. The version stays at 1.0.0 until public release.
+The build number increments per archive. The app is live, so raise `version` in `app.json` above the released version before archiving an update.
 
 ## Android
 
@@ -138,12 +138,16 @@ from the device to avoid connecting to it by accident.
 App.js                 Entry point
 app.json               Expo config (plugins, permissions, identifiers)
 index.js               Registers the root component
+plugins/
+  withSigningConfig.js Android release signing for prebuild
 
 src/
   screens/
     HomeScreen.js      Animated landing screen (dot reveals "randoro", then Get Ready)
     SetupScreen.js     Workout configuration (rounds, work/rest duration, intensity, combo)
     RunningScreen.js   Workout execution with audio cues
+  components/
+    WheelPicker.js     Scroll wheel for durations and rounds (iOS and Android)
   utils/
     generator.js       Builds the workout event timeline
     time.js            Time formatting / parsing
@@ -152,9 +156,11 @@ src/
 
 scripts/
   generate-sounds.js   Generates beep WAVs and the silence track
+  make-heartbeat.sh    Cuts the home-screen heartbeat from a source mp3
 
-assets/sounds/         Generated WAV files (silence.wav is ~57 MB)
-memory/                AI assistant context files (human-readable mirror)
+assets/sounds/         Generated WAV files (gitignored; run generate-sounds.js)
+assets/heartbeat.wav   Home-screen heartbeat (tracked)
+memory/                Engineering notes: current summaries and dated history
 
 TODO.md                Feature ideas, bugs, release tasks
 USER_NEEDS.md          User needs behind the features
@@ -162,7 +168,9 @@ USER_NEEDS.md          User needs behind the features
 
 ## Sound assets
 
-Beep files (`ping`, `double`, `double_rest`, `warmup`, `cooldown`) generated at 44.1 kHz, 16-bit, mono PCM. Each is a harmonic-rich tone (odd harmonics over the fundamental) for perceived loudness, normalised to its true measured peak. The silence track is 60 minutes of low-amplitude 110 Hz sine at 8 kHz mono (~57 MB), played non-looped at low volume alongside the beeps. It keeps iOS's audio engine producing continuous samples, required for background-mode beeps to fire and to hold the A2DP route open on Bluetooth speakers.
+Beep files (`ping`, `double`, `double_rest`, `warmup`, `cooldown`) generated at 44.1 kHz, 16-bit, mono PCM. Each is a harmonic-rich tone (odd harmonics over the fundamental) for perceived loudness, normalised to its true measured peak. Every beep file is padded to 1 s, because Android's ExoPlayer plays nothing on the first play of a shorter clip.
+
+The silence track is 5 minutes of low-amplitude 110 Hz sine at 8 kHz mono (~4.8 MB). Two players take turns playing it at low volume while the running screen is open, so audio never stops. Continuous audio keeps background beeps firing, holds the Bluetooth route open, and keeps an idle Bluetooth output from clipping the first beep. See `memory/project_audio_session.md`.
 
 Regenerate when the script changes:
 
