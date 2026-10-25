@@ -2,7 +2,7 @@
   "expo": {
     "name": "randoro",
     "slug": "randoro",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -22,7 +22,7 @@
       "appleTeamId": "C8DY3M4VMH"
     },
     "android": {
-      "versionCode": 3,
+      "versionCode": 4,
       "splash": {
         "image": "./assets/splash-android.png",
         "resizeMode": "contain",
