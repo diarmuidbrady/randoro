@@ -2,17 +2,15 @@
 name: Project Context
 description: What randoro is, who it's for, current state and product direction
 type: project
-originSessionId: 6db02655-3401-4670-a275-04d82ebca659
-modified: 2026-08-16T17:10:25.306Z
 ---
 Randoro is a random interval timer for shadow boxing. It plays random audio cues (beeps) during work rounds to keep training unpredictable. Used by Diarmuid to coach beginner boxing classes — music plays through a Bluetooth speaker while the app fires beeps over the top.
 
-**Current state (21 Oct 2026):**
-- iOS has been live on the App Store since September 2026.
-- Android version 3 (versionCode 3) is being prepared for Play Console. It brings background beeps, Bluetooth audio fixes, the JS scroll-wheel pickers, a native-driven home animation with a heartbeat sound, and fewer permissions.
-- Earlier work: presented publicly in August, where it went well. Since then: Dynamic Type across all screens, louder harmonic beeps and the ghost beep fix ([[project_ghost_beep_fix]]).
+**Current state (25 Oct 2026):**
+- iOS has been live on the App Store since September 2026. Android is in beta testing on Google Play.
+- 1.1.0 (Android versionCode 4) is being prepared for both. It brings the Preset / Manual / Simple workout styles, the How it works tutorial, a 10 s warning and 3-2-1 countdown before each round, the heartbeat trace from the app icon on the Home screen, a dark splash screen, and an Android icon that's no longer cropped.
+- Earlier work: presented publicly at Demos Anon on 29 May 2026, where it went well. Since then: Dynamic Type across all screens, louder harmonic beeps, the ghost beep fix ([[project_ghost_beep_fix]]), background beeps and Bluetooth fixes on Android, and fewer permissions.
 
-**Product signal (16 Aug 2026, Riain O'Donovan — intermediate Irish amateur boxer):**
+**Product signal (16 Aug 2026, an intermediate Irish amateur boxer):**
 - Core app is validated. "Intuitive, no guide needed." "Likes it as is, doesn't need much more."
 - Simplicity is the north star, stated twice by the same user: keep the app simple, a user should start a workout in a few clicks. Any added depth must stay optional and off the common path.
 - Direction: focus on polish and the Android release. Feature ideas are logged in the repo's TODO.md; the needs behind them in USER_NEEDS.md. Treat these as a considered backlog, not a build queue.

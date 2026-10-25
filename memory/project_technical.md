@@ -20,6 +20,7 @@ Current as of 25 Oct 2026. Audio decisions are in [[project_audio_session]].
 - Android release: `npx expo prebuild --platform android`, then `./gradlew bundleRelease` in `android/`. Bump `versionCode` in app.json for each upload.
 - iOS release: archive in Xcode → Distribute → App Store Connect. The build number increments with each archive. The app is live, so each App Store update also needs a higher `version` in app.json than the released one.
 - Background audio and the native config only work in the dev build (`npx expo run:ios` / `run:android`), not Expo Go.
+- Icons and splash: `assets/randoro-icon.svg` is the source, and `scripts/make-icons.sh` renders every image from it. `assets/icon.png` (iOS) is the full square at 1024 px with no alpha channel, which the App Store requires. Android adaptive icons show only the middle 72 of 108 dp, and masks crop further, so the foreground is the trace shrunk into that area on a transparent canvas, with the baseline run past the edges and a black `backgroundColor`. The monochrome layer (themed icons) is the same trace in white with a grey R spike. Both splash screens show the trace on `#1C1C1E`, the Home screen's colour, set per platform in app.json: on iOS it spans the screen width; Android 12+ only shows a small centred circle of the splash image, so there it's kept inside that.
 
 ## Sounds
 
@@ -31,8 +32,8 @@ Current as of 25 Oct 2026. Audio decisions are in [[project_audio_session]].
 ## Workout generation
 
 - Durations are `{ minutes, seconds }` objects, converted to seconds when the workout starts.
-- Pings per round: `floor(workDuration / (avgFrequency + minGap))`. n pings make n + 1 gaps. Each gap is `minGap` (combo/execution time, fixed) plus a random wait (anticipation); the waits share whatever time is left, so they average a little under `avgFrequency`. No ping lands on a round edge.
-- Manual tab: passes `pingCount` directly (attack count, or `pingsForWait` from the approximate wait). `maxPings` = `floor(workDuration / (minGap + 1)) − 1` keeps the average wait at least 1 s. Past that, Setup shows an error and blocks Start; it never changes the user's values to make them fit.
+- Pings per round: `floor(workDuration / (avgFrequency + minGap))`, at least 1. n pings make n + 1 gaps. Each gap is `minGap` (combo/execution time, fixed) plus a random wait (anticipation); the waits share whatever time is left, so they average a little under `avgFrequency`. No ping lands on a round edge.
+- Manual tab: passes `pingCount` directly (attack count, or `pingsForWait` from the avg. anticipation time). `maxPings` = `floor(workDuration / (minGap + 1)) − 1` keeps the average wait at least 1 s. Past that, Setup shows an error and blocks Start; it never changes the user's values to make them fit.
 - `randomBeeps: false` (the Simple tab) generates no pings, making a plain interval timer. Simple also sends flash and vibration off.
 
 ## Countdown

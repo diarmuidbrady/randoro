@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Randoro is a boxing interval timer (React Native + Expo SDK 54, plain JavaScript) that fires beeps at random times during work rounds. iOS is live on the App Store; Android is being prepared for Play Console.
+Randoro is a boxing interval timer (React Native + Expo SDK 54, plain JavaScript) that fires beeps at random times during work rounds. iOS is live on the App Store; Android is in beta testing on Google Play.
 
 ## Commands
 
@@ -21,12 +21,13 @@ npx expo start                    # serve JS reloads to an installed dev build (
 - Android release: bump `android.versionCode` in `app.json`, run `npx expo prebuild --platform android`, then in `android/` run `./gradlew signingReport` (release must show the upload keystore) and `./gradlew bundleRelease`. `plugins/withSigningConfig.js` injects the release signing config from `~/.gradle/gradle.properties`.
 - iOS release: Xcode → Archive → Distribute. Raise `version` in `app.json` above the released version first.
 - Re-run `generate-sounds.js` after editing it. `scripts/make-heartbeat.sh` regenerates the tracked `assets/heartbeat.wav`.
+- `assets/randoro-icon.svg` is the icon source. `scripts/make-icons.sh` (needs Google Chrome and ffmpeg) renders the iOS icon, the Android adaptive icon layers and both splash images from it. Android shows only the middle two-thirds of an adaptive icon, so the foreground must be the trace shrunk onto a transparent canvas, not the full iOS square.
 
 ## Architecture
 
 Three screens on a stack navigator (`App.js`): Home → Setup → Running. A tutorial modal, HowItWorks, opens from Setup's "How it works" link, and once automatically: it sets the `tutorialSeen` AsyncStorage flag when it opens. Its sound demos play the silence drone so Bluetooth doesn't clip them.
 
-**The workout is precomputed.** `SetupScreen` turns the user's choices into a config. The Workout Style card has three tabs. **Preset** (the default) maps Intensity to `avgFrequency` and Attack Length to `minGap` through `INTENSITY_MAP` / `COMBO_MAP` in `src/constants/theme.js`. **Manual** sets the execution time (`minGap`) and either an approximate wait or an attack count, and passes the count as `pingCount`. If the attacks don't fit (`maxPings` in the generator), it shows an error and blocks Start rather than changing any value. Switching between Preset and Manual carries the values across. **Simple** sends `randomBeeps: false` and turns off flash and vibration. It calls `generateWorkout()` in `src/utils/generator.js` and passes the result to `RunningScreen` as a route param. The workout has three parts:
+**The workout is precomputed.** `SetupScreen` turns the user's choices into a config. The Workout Style card has three tabs. **Preset** (the default) maps Intensity to `avgFrequency` and Attack Length to `minGap` through `INTENSITY_MAP` / `COMBO_MAP` in `src/constants/theme.js`. **Manual** sets the execution time (`minGap`) and either the avg. anticipation time or the attacks per round, and passes the count as `pingCount`. If the attacks don't fit (`maxPings` in the generator), it shows an error and blocks Start rather than changing any value. Switching between Preset and Manual carries the values across. **Simple** sends `randomBeeps: false` and turns off flash and vibration. It calls `generateWorkout()` in `src/utils/generator.js` and passes the result to `RunningScreen` as a route param. The workout has three parts:
 - `phases`: contiguous `{ type, start, end, label, round? }` spans (warmup, rest, work, cooldown, and a zero-length `done`).
 - `events`: a time-sorted list of `{ time, type }` (`ping`, `round_start`, `rest_start`, `warmup_start`, `cooldown_start`, `warning`, `countdown`, `done`). These decide which sound plays.
 - `totalDuration`.

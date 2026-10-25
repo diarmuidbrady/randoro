@@ -29,4 +29,4 @@ No known bugs at this moment
 - The UI is boxing-specific. Other sports (hurling, running) have shown interest. Boxing stays the default; add sport-specific presets and setup variants later.
 
 ## Release
-- App icon: finalise QRS waveform design, integrate into the build.
+- 1.1.0: test the release builds on device (Android `bundleRelease`, iOS TestFlight) before publishing.

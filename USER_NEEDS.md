@@ -30,5 +30,5 @@ Each need above adds surface area. The most repeated signal from users is a wish
 
 ## Calls
 A dated record of when user conversations happened. Notes are distilled into the needs above rather than kept raw.
-- **16 Aug 2026** — Riain O'Donovan, intermediate Irish amateur boxer.
+- **16 Aug 2026** — an intermediate Irish amateur boxer.
 - **29 May 2026** — Demos Anon presentation; feedback from hurling athletes, runners, boxing coaches.

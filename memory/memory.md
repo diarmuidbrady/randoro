@@ -1,6 +1,6 @@
 # Memory Index
 
-Engineering notes for Randoro. Last updated 21 Oct 2026.
+Engineering notes for Randoro. Last updated 25 Oct 2026.
 
 ## Current (kept in step with the code)
 - [Project Context](project_context.md) — What Randoro is, current state, product direction
