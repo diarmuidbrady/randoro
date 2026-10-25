@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,9 @@ import {
   Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import WheelPicker from '../components/WheelPicker';
+import { TUTORIAL_SEEN_KEY } from './HowItWorksScreen';
 import {
   INTENSITY_MAP,
   INTENSITY_LABELS,
@@ -86,6 +88,14 @@ export default function SetupScreen({ navigation }) {
   const [tooltipKey, setTooltipKey] = useState(null); // Used to reset tooltips
   // Preset or Manual, whichever was used last, so its values carry over to the other.
   const lastBeepStyleRef = useRef(DEFAULT_CONFIG.style);
+
+  // The tutorial opens by itself the first time; it marks itself seen when it opens.
+  // If storage fails it stays closed, and the link still works.
+  useEffect(() => {
+    AsyncStorage.getItem(TUTORIAL_SEEN_KEY)
+      .then((seen) => { if (!seen) navigation.navigate('HowItWorks'); })
+      .catch(() => {});
+  }, [navigation]);
 
   // Manual: the attacks per round and whether they fit. Nothing is changed to
   // make them fit; the user is told and Start is blocked.
@@ -171,6 +181,14 @@ export default function SetupScreen({ navigation }) {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: 40 + insets.bottom }]} keyboardShouldPersistTaps="handled">
+
+        <TouchableOpacity
+          style={styles.howItWorks}
+          onPress={() => navigation.navigate('HowItWorks')}
+          accessibilityRole="button"
+        >
+          <Text style={styles.howItWorksText}>How it works</Text>
+        </TouchableOpacity>
 
         {/* ── Section 1: Round Structure ─────────────────────── */}
         <Text maxFontSizeMultiplier={3} style={styles.sectionLabel}>Round Structure</Text>
@@ -531,6 +549,16 @@ const styles = StyleSheet.create({
   },
   scroll: {
     padding: 16,
+  },
+  howItWorks: {
+    alignSelf: 'flex-end',
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+  },
+  howItWorksText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
   },
   sectionLabel: {
     fontSize: 13,

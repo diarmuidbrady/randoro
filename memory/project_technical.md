@@ -8,10 +8,9 @@ Current as of 21 Oct 2026. Audio decisions are in [[project_audio_session]].
 ## Stack
 
 - Expo SDK 54, React Native 0.81.5 (new architecture), expo-audio 1.1.1, react-navigation (stack), react-native-svg.
-- expo-av is removed. It's deprecated from SDK 55, and its config plugin added a microphone permission. Use expo-audio.
+- AsyncStorage (`@react-native-async-storage/async-storage` 2.2.0) holds only the `tutorialSeen` flag. It writes to the app sandbox, so it needs no storage permission.
 - expo-asset is pinned to `~12.0.13`. expo-audio declares `expo-asset: "*"` as a peer dependency, so npm installed the SDK 55 version at the top level.
-- No picker library. `src/components/WheelPicker.js` is a JS scroll wheel (ScrollView with `snapToInterval`, 44 px rows, 5 visible). It handles both `onMomentumScrollEnd` and `onScrollEndDrag`, because Android skips the momentum event after a slow drag. To screen readers it's an "adjustable" control.
-  - Why the picker went: `@react-native-picker/picker` only drew dropdowns on Android, and 2.11.1 (the version SDK 54 pins) crashed on a Galaxy A14. Its C++ was compiled without RN 0.81's `RN_SERIALIZABLE_STATE`, so heap corruption showed up in `RNCAndroidDialogPickerProps`.
+- `src/components/WheelPicker.js` is a pure-JS scroll wheel (ScrollView with `snapToInterval`, 44 px rows, 5 visible), so it looks and behaves the same on iOS and Android. It handles both `onMomentumScrollEnd` and `onScrollEndDrag`, because Android skips the momentum event after a slow drag. To screen readers it's an "adjustable" control.
 
 ## Native project and builds
 
@@ -43,15 +42,12 @@ Current as of 21 Oct 2026. Audio decisions are in [[project_audio_session]].
   - 5 s warm-up (the default): the warning would fall before the workout starts, so you hear only 3-2-1.
   - 10 s rest: the warning would play over the rest-start beeps, so it's skipped.
 - No countdown between back-to-back work rounds.
-
-Rejected:
-- 5-4-3-2-1: too many beeps on every rest.
-- A rising count in equal 25 Hz steps (400→500 Hz): sounded out of tune.
-- Softer sounds (decaying envelopes, fewer harmonics, a wood-block clack): 7–15 dB quieter than the ping over the first 200 ms, too quiet over music.
+- The count is only three beeps, so rests aren't crowded with beeps.
+- The warning is an octave below the round-start beep and the countdown a fourth below, so the sequence sounds in tune. Both use the ping's harmonic tone, so they stay loud over music.
 
 ## Home animation
 
-- Native-driven: a single `progress` value (0 → 1) runs over 1750 ms. The ECG path is a set of interpolation lookup tables built from `computeY`. An earlier version drove it from JS with a state update every frame, which dropped frames on Android.
+- Native-driven: a single `progress` value (0 → 1) runs over 1750 ms. The ECG path is a set of interpolation lookup tables built from `computeY`, so the native driver runs it without dropping frames on Android.
 - The trail is 30 dots spaced 2 frames apart. Each dot adds about 15 native animated nodes, all set up before the first frame moves. On the A14 debug build the pause before movement was 60 dots → 1.18 s, 30 → 0.50 s, 12 → 0.41 s. A smoother trail should come from an SVG line, not more dots.
 - On Android the native animation clock starts at its first UI frame, which can be well after mount. Anything that must line up with the dot has to follow the dot's own value, not JS timers started at mount:
   - Letters fade in from the trail's tail position.

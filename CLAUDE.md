@@ -24,7 +24,7 @@ npx expo start                    # serve JS reloads to an installed dev build (
 
 ## Architecture
 
-Three screens on a stack navigator (`App.js`): Home → Setup → Running.
+Three screens on a stack navigator (`App.js`): Home → Setup → Running. A tutorial modal, HowItWorks, opens from Setup's "How it works" link, and once automatically: it sets the `tutorialSeen` AsyncStorage flag when it opens. Its sound demos play the silence drone so Bluetooth doesn't clip them.
 
 **The workout is precomputed.** `SetupScreen` turns the user's choices into a config. The Workout Style card has three tabs. **Preset** (the default) maps Intensity to `avgFrequency` and Combo # to `minGap` through `INTENSITY_MAP` / `COMBO_MAP` in `src/constants/theme.js`. **Manual** sets the execution time (`minGap`) and either an approximate wait or an attack count, and passes the count as `pingCount`. If the attacks don't fit (`maxPings` in the generator), it shows an error and blocks Start rather than changing any value. Switching between Preset and Manual carries the values across. **Simple** sends `randomBeeps: false` and turns off flash and vibration. It calls `generateWorkout()` in `src/utils/generator.js` and passes the result to `RunningScreen` as a route param. The workout has three parts:
 - `phases`: contiguous `{ type, start, end, label, round? }` spans (warmup, rest, work, cooldown, and a zero-length `done`).
@@ -52,10 +52,12 @@ Use `expo-audio`, never `expo-av`, which is deprecated and adds a microphone per
 ## Other non-obvious decisions
 
 - **Home animation** (`HomeScreen.js`) runs on the native driver from a single `progress` value. On Android the native clock starts at the first UI frame, which can come well after mount. Anything that must line up with the dot (letter reveals, the heartbeat sound) has to key off the dot's animated value, not JS timers started at mount. Adding trail dots adds native node setup time. A smoother trail should come from an SVG line, not more dots.
-- **WheelPicker** is a hand-rolled ScrollView wheel. The native picker library crashed on a Galaxy A14. It handles both `onMomentumScrollEnd` and `onScrollEndDrag`, because Android skips the momentum event after a slow drag.
+- **WheelPicker** is a pure-JS ScrollView wheel, so it's the same on iOS and Android. It handles both `onMomentumScrollEnd` and `onScrollEndDrag`, because Android skips the momentum event after a slow drag.
 - **Dynamic Type:** text scales by default. Make layouts absorb it (`flexShrink`, `flexWrap` + `minWidth`). Use `numberOfLines={1}` + `adjustsFontSizeToFit` only for short fixed-format strings such as times and button captions. Use `maxFontSizeMultiplier` caps only on the wordmark (1x), icon glyphs (2x), the GET READY label (2x) and WheelPicker labels (1.5x), never on informational text. Details are in `memory/dynamic-type-changes.md`.
 
 ## Repo docs
+
+- Keep every doc (CLAUDE.md, README, `memory/`, TODO) concise, clear and minimal. Say each thing once, in plain words, and leave out what the code already shows. Current docs describe the app as it is and why. Leave out options that weren't taken; history belongs in the dated history files.
 
 - `memory/` holds engineering notes and is published in the repo. `memory/memory.md` is the index. "Current" files are kept in step with the code. "History" files are dated records the code may have moved past. Update the current files when behaviour they describe changes. `memory/user_profile.md` and `memory/feedback_collaboration.md` are gitignored personal notes. Keep personal content out of the tracked files.
 - `TODO.md` holds distilled feature ideas, bugs and release tasks. `USER_NEEDS.md` holds the needs behind them. Treat both as a considered backlog, not a build queue.

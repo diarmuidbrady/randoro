@@ -149,6 +149,7 @@ src/
     HomeScreen.js      Animated landing screen (dot reveals "randoro", then Get Ready)
     SetupScreen.js     Workout configuration (rounds, work/rest duration, intensity, combo)
     RunningScreen.js   Workout execution with audio cues
+    HowItWorksScreen.js  Tutorial cards with sound demos
   components/
     WheelPicker.js     Scroll wheel for durations and rounds (iOS and Android)
   utils/
