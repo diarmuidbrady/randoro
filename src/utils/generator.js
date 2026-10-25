@@ -6,6 +6,27 @@ const COUNTDOWN_BEEPS = [
   { secondsOut: 1,  type: 'countdown' },
 ];
 
+// Lowest average wait a round can be packed to, so the pings never fall into
+// an even rhythm.
+const MIN_AVG_WAIT = 1;
+
+// How many pings a round gets for an average wait and combo time.
+// Rounding down means the real average wait lands a little under avgWait.
+export function pingsForWait(workDuration, avgWait, comboTime) {
+  return Math.max(1, Math.floor(workDuration / (avgWait + comboTime)));
+}
+
+// Each of the n + 1 gaps is comboTime + wait, so n pings need
+// (n + 1) × (comboTime + MIN_AVG_WAIT) ≤ workDuration.
+export function maxPings(workDuration, comboTime) {
+  return Math.floor(workDuration / (comboTime + MIN_AVG_WAIT)) - 1;
+}
+
+// Average wait per gap when a round holds n pings.
+export function avgWaitFor(workDuration, n, comboTime) {
+  return workDuration / (n + 1) - comboTime;
+}
+
 /**
  * Generates random ping times within a single work round.
  *
@@ -53,6 +74,7 @@ function generatePingTimes(workDuration, n, minGap) {
  * @param {number} config.cooldown      - Cooldown duration (seconds)
  * @param {number} config.avgFrequency  - Average wait (anticipation) seconds per gap, on top of minGap
  * @param {number} config.minGap        - Combo (execution) seconds, the fixed part of each gap
+ * @param {number} [config.pingCount]   - Pings per round; overrides the count from avgFrequency
  * @param {boolean} config.randomBeeps  - If false, no pings: a plain interval timer
  *
  * @returns {{ events: object[], phases: object[], totalDuration: number }}
@@ -67,11 +89,11 @@ export function generateWorkout(config) {
     cooldown = 0,
     avgFrequency = 5,
     minGap = 2,
+    pingCount,
     randomBeeps = true,
   } = config;
 
-  // Rounding down means the real average wait lands a little under avgFrequency.
-  const n = Math.max(1, Math.floor(workDuration / (avgFrequency + minGap)));
+  const n = pingCount ?? pingsForWait(workDuration, avgFrequency, minGap);
   const events = [];
   const phases = [];
   let t = 0;

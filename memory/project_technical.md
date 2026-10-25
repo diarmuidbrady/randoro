@@ -33,7 +33,8 @@ Current as of 21 Oct 2026. Audio decisions are in [[project_audio_session]].
 
 - Durations are `{ minutes, seconds }` objects, converted to seconds when the workout starts.
 - Pings per round: `floor(workDuration / (avgFrequency + minGap))`. n pings make n + 1 gaps. Each gap is `minGap` (combo/execution time, fixed) plus a random wait (anticipation); the waits share whatever time is left, so they average a little under `avgFrequency`. No ping lands on a round edge.
-- `randomBeeps: false` (the Random Beeps switch) generates no pings, making a plain interval timer.
+- Manual tab: passes `pingCount` directly (attack count, or `pingsForWait` from the approximate wait). `maxPings` = `floor(workDuration / (minGap + 1)) − 1` keeps the average wait at least 1 s. Past that, Setup shows an error and blocks Start; it never changes the user's values to make them fit.
+- `randomBeeps: false` (the Simple tab) generates no pings, making a plain interval timer. Simple also sends flash and vibration off.
 
 ## Countdown
 

@@ -8,10 +8,9 @@ No known bugs at this moment
 ## Feature ideas
 
 ### Round structure
-- **Guided round mode:** beeps plus called combinations. Self-directed (random beeps) and free (Random Beeps off) already exist.
+- **Guided round mode:** beeps plus called combinations. Self-directed (Preset / Manual) and free (Simple) already exist.
 - **Varying intensity within a round:** e.g. high first minute, moderate second, high third to finish.
 - **Workout presets:** named starting points, e.g. "3x3 Amateur Fight" (high intensity), "10x3 Professional" (moderate–high). Less to configure before starting.
-- **Frequency / Attacks / Manual tabs:** three ways to set round difficulty. Frequency = wait time in seconds; Attacks = number of attacks; aligned low/med/high presets across both. Manual for custom.
 
 ### Guided training
 - **Opponent type:** choose an opponent (opposite stance orthodox/southpaw, aggressive, tall/long, short/small) that shapes the round.

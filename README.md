@@ -8,10 +8,11 @@ A boxing interval timer that fires random audio cues so you have to react to the
 **Setup** — configure your session before starting:
 
 - **Round Structure** — set warm-up, number of rounds, work duration, rest duration, and cool-down. Tap any duration to open a scroll wheel. The swap button (↔) flips whether work or rest comes first.
-- **Workout Style** — *Random Beeps* turns the random cues off for a plain interval timer. When on, two controls shape how they fire:
-  - *Intensity* — how often cues fire. Low fires infrequently, High fires constantly.
-  - *Combo Count* — how much time you get after each cue to execute your combination. 1-2 punches gives a short window, 5-6+ gives a longer one.
-- **Feedback** — toggle screen flash and vibration on each cue.
+- **Workout Style** — three tabs:
+  - *Preset* (default) — *Intensity* sets how often cues fire (Low fires infrequently, High fires constantly). *Combo #* sets how much time you get after each cue to execute your combination (1-2 punches gives a short window, 5-6+ a longer one).
+  - *Manual* — set intensity by the approximate wait before each cue or by the number of attacks per round, plus the execution time after each cue in seconds. If the attacks don't fit the round, you're told and the workout won't start until you change something.
+  - *Simple* — no random cues, a plain interval timer.
+- **Feedback** — toggle screen flash and vibration on each cue. Greyed out in Simple, since there are no cues.
 
 Tap **ENTER** to continue.
 
