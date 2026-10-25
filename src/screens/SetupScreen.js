@@ -41,21 +41,21 @@ const STYLE_LABELS = ['Preset', 'Manual', 'Simple'];
 const SET_BY_LABELS = ['Wait', 'Attacks'];
 
 const TOOLTIPS = {
-  intensity: {
+  presetIntensity: {
     title: 'Intensity',
-    text: 'Controls how often audio cues fire. Higher intensity means more frequent cues.',
+    text: 'How often the beeps fire. Higher intensity means more beeps.',
   },
-  combo: {
-    title: 'Combo #',
-    text: 'Controls time given to react with punch combo. Longer combos means more time.',
+  presetAttackLength: {
+    title: 'Attack Length',
+    text: 'The time you get after each beep, based on the number of punches you throw: 1-2, 3-4 or 5-6+. More punches get more time.',
   },
   manualIntensity: {
     title: 'Intensity',
-    text: 'Set how often cues fire, either by the approximate wait before each cue or by the number of attacks per round. Each wait is random, so the cues stay unpredictable.',
+    text: 'How often the beeps fire. Set it by Wait, the approximate seconds before each beep, or by Attacks, the number of beeps per round. Each wait is random, so the beeps stay unpredictable.',
   },
-  attackLength: {
-    title: 'Attack length',
-    text: 'Seconds to throw your combination after each cue. This time is fixed. The random wait comes on top of it.',
+  manualAttackLength: {
+    title: 'Attack Length',
+    text: 'The time you get after each beep, in seconds. Set it to fit the number of punches you throw. The random wait before the next beep comes on top of it.',
   },
 };
 
@@ -106,9 +106,9 @@ export default function SetupScreen({ navigation }) {
     : attacks;
   let manualError = null;
   if (maxAttacks < 1) {
-    manualError = `A ${execTime} s attack doesn't fit a ${formatTime(work)} round.`;
+    manualError = `A ${execTime} s attack length doesn't fit a ${formatTime(work)} round.`;
   } else if (manualAttacks > maxAttacks) {
-    manualError = `${attacks} attacks don't fit a ${formatTime(work)} round with ${execTime} s attacks (max ${maxAttacks}).`;
+    manualError = `${attacks} attacks don't fit a ${formatTime(work)} round with a ${execTime} s attack length (max ${maxAttacks}).`;
   }
   const manualHint = setBy === 'Wait'
     ? `≈ ${manualAttacks} attacks per ${formatTime(work)} round`
@@ -260,43 +260,33 @@ export default function SetupScreen({ navigation }) {
 
           {style === 'Preset' && (
             <View style={styles.pickerContainer}>
-              {/* Intensity row */}
-              <View style={styles.pickerRow}>
-                <Text style={styles.pickerLabel}>Intensity</Text>
-                <TouchableOpacity onPress={() => setTooltipKey('intensity')}>
-                  <Text style={styles.tooltipTrigger}>?</Text>
-                </TouchableOpacity>
-                <Segments labels={INTENSITY_LABELS} value={intensity} onChange={setIntensity} />
-              </View>
+              <Field title="Intensity" onHelp={() => setTooltipKey('presetIntensity')}>
+                <View style={styles.row}>
+                  <Segments labels={INTENSITY_LABELS} value={intensity} onChange={setIntensity} />
+                </View>
+              </Field>
 
-              {/* Combo row */}
-              <View style={styles.pickerRow}>
-                <Text style={styles.pickerLabel}>Combo #</Text>
-                <TouchableOpacity onPress={() => setTooltipKey('combo')}>
-                  <Text style={styles.tooltipTrigger}>?</Text>
-                </TouchableOpacity>
-                <Segments labels={COMBO_LABELS} value={combo} onChange={setCombo} />
-              </View>
+              <View style={styles.fieldDivider} />
+
+              <Field title="Attack Length" onHelp={() => setTooltipKey('presetAttackLength')}>
+                <View style={styles.row}>
+                  <Segments labels={COMBO_LABELS} value={combo} onChange={setCombo} />
+                </View>
+              </Field>
             </View>
           )}
 
           {style === 'Manual' && (
             <View style={styles.pickerContainer}>
               {/* Intensity: by approximate wait or by attacks per round */}
-              <View style={styles.manualSection}>
-                <View style={styles.manualHeader}>
-                  <Text style={styles.manualHeading}>Intensity</Text>
-                  <TouchableOpacity onPress={() => setTooltipKey('manualIntensity')}>
-                    <Text style={styles.tooltipTrigger}>?</Text>
-                  </TouchableOpacity>
-                </View>
+              <Field title="Intensity" onHelp={() => setTooltipKey('manualIntensity')}>
                 <View style={styles.row}>
                   <Segments labels={SET_BY_LABELS} value={setBy} onChange={changeSetBy} />
                 </View>
                 <View style={styles.valueRow}>
                   {setBy === 'Wait' ? (
                     <>
-                      <Text style={styles.toggleLabel}>Approx. wait</Text>
+                      <Text style={styles.fieldLabel}>Approx. Wait</Text>
                       <NumberPicker
                         items={WAITS}
                         value={wait}
@@ -307,7 +297,7 @@ export default function SetupScreen({ navigation }) {
                     </>
                   ) : (
                     <>
-                      <Text style={styles.toggleLabel}># Attacks</Text>
+                      <Text style={styles.fieldLabel}>Attacks per Round</Text>
                       <NumberPicker
                         items={ATTACKS}
                         value={attacks}
@@ -320,18 +310,14 @@ export default function SetupScreen({ navigation }) {
                 {manualError
                   ? <Text style={styles.errorText}>{manualError}</Text>
                   : <Text style={styles.hintText}>{manualHint}</Text>}
-              </View>
+              </Field>
 
-              {/* Attack length: the fixed execution time after each cue */}
-              <View style={styles.manualSection}>
-                <View style={styles.manualHeader}>
-                  <Text style={styles.manualHeading}>Attack length</Text>
-                  <TouchableOpacity onPress={() => setTooltipKey('attackLength')}>
-                    <Text style={styles.tooltipTrigger}>?</Text>
-                  </TouchableOpacity>
-                </View>
+              <View style={styles.fieldDivider} />
+
+              {/* Attack Length: the fixed execution time after each beep */}
+              <Field title="Attack Length" onHelp={() => setTooltipKey('manualAttackLength')}>
                 <View style={styles.valueRow}>
-                  <Text style={styles.toggleLabel}>Execution time</Text>
+                  <Text style={styles.fieldLabel}>Execution Time</Text>
                   <NumberPicker
                     items={EXEC_TIMES}
                     value={execTime}
@@ -340,7 +326,7 @@ export default function SetupScreen({ navigation }) {
                     accessibilityLabel="Execution time"
                   />
                 </View>
-              </View>
+              </Field>
             </View>
           )}
 
@@ -423,6 +409,21 @@ function Segments({ labels, value, onChange }) {
           </Text>
         </TouchableOpacity>
       ))}
+    </View>
+  );
+}
+
+// A Workout Style field: heading and help button above its controls.
+function Field({ title, onHelp, children }) {
+  return (
+    <View style={styles.field}>
+      <View style={styles.fieldHeader}>
+        <Text style={styles.fieldHeading}>{title}</Text>
+        <TouchableOpacity onPress={onHelp}>
+          <Text style={styles.tooltipTrigger}>?</Text>
+        </TouchableOpacity>
+      </View>
+      {children}
     </View>
   );
 }
@@ -758,20 +759,6 @@ const styles = StyleSheet.create({
   pickerContainerDisabled: {
     opacity: 0.35,
   },
-  pickerRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 10,
-  },
-  pickerLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-    minWidth: 64,
-    flexShrink: 1,
-    textAlign: 'center',
-  },
   segmentRow: {
     flex: 1,
     flexDirection: 'row',
@@ -874,21 +861,31 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
 
-  // Manual tab
-  manualSection: {
+  // Preset and Manual fields
+  field: {
     gap: 10,
   },
-  manualHeader: {
+  fieldHeader: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  manualHeading: {
-    fontSize: 12,
+  fieldHeading: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#6B7280',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     flexShrink: 1,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+    flexShrink: 1,
+  },
+  fieldDivider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
   },
   valueRow: {
     flexDirection: 'row',

@@ -185,10 +185,10 @@ export default function HowItWorksScreen({ navigation }) {
     <Page key="style" title="Workout Style">
       <Heading>Preset</Heading>
       <Item term="Intensity:">Low, Medium or High. How often the beeps fire.</Item>
-      <Item term="Combo #:">1-2, 3-4 or 5-6+. How long you get to throw after each beep.</Item>
+      <Item term="Attack Length:">the time you get after each beep, based on the number of punches you throw: 1-2, 3-4 or 5-6+.</Item>
       <Heading>Manual</Heading>
       <Item term="Intensity:">set it by Wait, the approximate seconds before each beep, or by Attacks, the number of beeps per round.</Item>
-      <Item term="Attack length:">the seconds you get to throw after each beep.</Item>
+      <Item term="Attack Length:">the time you get after each beep, in seconds. Set it to fit the number of punches you throw.</Item>
       <Para>If the attacks don't fit the round, an error shows and you can't start until you change something.</Para>
       <Heading>Simple</Heading>
       <Para>A plain interval timer with no random beeps. Screen Flash and Vibration are greyed out.</Para>
