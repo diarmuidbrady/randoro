@@ -8,7 +8,7 @@ No known bugs at this moment
 ## Feature ideas
 
 ### Round structure
-- **Countdown into a work round:** when the next round is a Work round, play prompt beeps at 10 seconds, then at 5, 4, 3, 2, and 1 second before it starts.
+- **10-second warning before a work round:** a prompt beep at 10 seconds out, ahead of the 5-4-3-2-1 countdown (already built).
 - **Round modes:** self-directed (beeps only, current), guided (beeps + called combinations), free (no beeps, athlete chooses when to punch — usable as a finisher or as a plain interval timer).
 - **Varying intensity within a round:** e.g. high first minute, moderate second, high third to finish.
 - **Workout presets:** named starting points, e.g. "3x3 Amateur Fight" (high intensity), "10x3 Professional" (moderate–high). Less to configure before starting.

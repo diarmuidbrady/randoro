@@ -1,3 +1,5 @@
+const COUNTDOWN_SECONDS = 5;
+
 /**
  * Generates random ping times within a single work round.
  *
@@ -113,6 +115,19 @@ export function generateWorkout(config) {
 
   addEvent('done');
   phases.push({ type: 'done', start: t, end: t, label: 'Done' });
+
+  // Countdown into each work round: a beep each second over the last
+  // COUNTDOWN_SECONDS of the phase before it. Beeps at or before that phase's
+  // start are dropped so they don't land on its start sound, and back-to-back
+  // work rounds get none so they don't mix with pings.
+  phases.forEach((phase, i) => {
+    const prev = phases[i - 1];
+    if (phase.type !== 'work' || !prev || prev.type === 'work') return;
+    for (let s = 1; s <= COUNTDOWN_SECONDS; s++) {
+      const time = phase.start - s;
+      if (time > prev.start) events.push({ time, type: 'countdown' });
+    }
+  });
 
   events.sort((a, b) => a.time - b.time);
 

@@ -7,6 +7,7 @@
  *   double_rest.wav — two lower, longer beeps (rest start)
  *   warmup.wav      — three rising beeps     (warmup start)
  *   cooldown.wav    — three falling beeps    (cooldown start / done)
+ *   countdown.wav   — one low beep           (5-4-3-2-1 before a work round)
  *   silence.wav     — 5 min of 110 Hz sine at amplitude 0.05, 8 kHz mono (~4.8 MB)
  *
  * Beeps: 44.1 kHz, 16-bit mono PCM.
@@ -170,6 +171,8 @@ const files = {
   'double_rest.wav': [ { freq: 500, duration: 0.20 }, { freq: 500, duration: 0.20 } ],
   'warmup.wav':      [ { freq: 500, duration: 0.20 }, { freq: 510, duration: 0.15 }, { freq: 600, duration: 0.10 } ],
   'cooldown.wav':    [ { freq: 600, duration: 0.20 }, { freq: 500, duration: 0.15 }, { freq: 500, duration: 0.10 } ],
+  // Lower than the ping so it isn't mistaken for a punch cue.
+  'countdown.wav':   [ { freq: 500, duration: 0.15 } ],
 };
 
 for (const [name, beeps] of Object.entries(files)) {

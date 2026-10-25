@@ -47,6 +47,7 @@ export default function RunningScreen({ route, navigation }) {
   const doubleRestPlayer = useAudioPlayer(require('../../assets/sounds/double_rest.wav'), playerOpts);
   const warmupPlayer     = useAudioPlayer(require('../../assets/sounds/warmup.wav'), playerOpts);
   const cooldownPlayer   = useAudioPlayer(require('../../assets/sounds/cooldown.wav'), playerOpts);
+  const countdownPlayer  = useAudioPlayer(require('../../assets/sounds/countdown.wav'), playerOpts);
   // A near-silent 5 min 110 Hz tone keeps audio flowing, which background
   // playback and Bluetooth routing need. Two players hand over before the end
   // (loop=true leaves a gap). It plays while this screen is open, because an
@@ -236,6 +237,7 @@ export default function RunningScreen({ route, navigation }) {
         else if (e.type === 'rest_start')     playSound(doubleRestPlayer);
         else if (e.type === 'warmup_start')   playSound(warmupPlayer);
         else if (e.type === 'cooldown_start') playSound(cooldownPlayer);
+        else if (e.type === 'countdown')      playSound(countdownPlayer);
       }
     }
 
@@ -243,7 +245,7 @@ export default function RunningScreen({ route, navigation }) {
     setElapsed(current);
   }, [
     events, totalDuration, vibrationEnabled,
-    pingPlayer, doublePlayer, doubleRestPlayer, warmupPlayer, cooldownPlayer,
+    pingPlayer, doublePlayer, doubleRestPlayer, warmupPlayer, cooldownPlayer, countdownPlayer,
     playSound, queuePingCue,
   ]);
   tickRef.current = tick;

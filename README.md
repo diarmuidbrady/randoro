@@ -20,6 +20,8 @@ Tap **ENTER** to continue.
 - The screen flashes (if enabled)
 - The phone vibrates (if enabled)
 
+In the last 5 seconds before a work round, a lower beep counts down 5-4-3-2-1.
+
 Use the arrow buttons (‹ ›) to jump between phases. Tap **PAUSE** to pause mid-round and **RESUME** to continue. Tap ✕ to end early.
 
 Audio continues in the background and on the lock screen, so it's safe to pocket the phone mid-session.
@@ -168,7 +170,7 @@ USER_NEEDS.md          User needs behind the features
 
 ## Sound assets
 
-Beep files (`ping`, `double`, `double_rest`, `warmup`, `cooldown`) generated at 44.1 kHz, 16-bit, mono PCM. Each is a harmonic-rich tone (odd harmonics over the fundamental) for perceived loudness, normalised to its true measured peak. Every beep file is padded to 1 s, because Android's ExoPlayer plays nothing on the first play of a shorter clip.
+Beep files (`ping`, `double`, `double_rest`, `warmup`, `cooldown`, `countdown`) generated at 44.1 kHz, 16-bit, mono PCM. Each is a harmonic-rich tone (odd harmonics over the fundamental) for perceived loudness, normalised to its true measured peak. Every beep file is padded to 1 s, because Android's ExoPlayer plays nothing on the first play of a shorter clip.
 
 The silence track is 5 minutes of low-amplitude 110 Hz sine at 8 kHz mono (~4.8 MB). Two players take turns playing it at low volume while the running screen is open, so audio never stops. Continuous audio keeps background beeps firing, holds the Bluetooth route open, and keeps an idle Bluetooth output from clipping the first beep. See `memory/project_audio_session.md`.
 
