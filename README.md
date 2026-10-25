@@ -20,7 +20,7 @@ Tap **ENTER** to continue.
 - The screen flashes (if enabled)
 - The phone vibrates (if enabled)
 
-In the last 5 seconds before a work round, a lower beep counts down 5-4-3-2-1.
+Before each work round, a lower beep gives a 10-second warning, then counts down 5-4-3-2-1.
 
 Use the arrow buttons (‹ ›) to jump between phases. Tap **PAUSE** to pause mid-round and **RESUME** to continue. Tap ✕ to end early.
 

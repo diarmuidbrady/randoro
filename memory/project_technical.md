@@ -33,6 +33,7 @@ Current as of 21 Oct 2026. Audio decisions are in [[project_audio_session]].
 
 - Durations are `{ minutes, seconds }` objects, converted to seconds when the workout starts.
 - Pings per round: `floor(workDuration / (avgFrequency + minGap))`. n pings make n + 1 gaps, each at least `minGap`, so no ping lands on a round edge.
+- Countdown into a work round: `countdown` events at 10, 5, 4, 3, 2 and 1 s out, in the phase before it. Any at or before that phase's start are dropped, so they don't collide with its start sound (with the default 5 s warm-up you hear 4-3-2-1). None between back-to-back work rounds, where they'd mix with pings. The beep is 500 Hz, lower than the 750 Hz ping, so it doesn't read as a punch cue.
 
 ## Home animation
 
