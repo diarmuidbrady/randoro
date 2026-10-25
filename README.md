@@ -188,6 +188,7 @@ node scripts/generate-sounds.js
 
 Top-level docs:
 
+- [CHANGELOG.md](CHANGELOG.md) — what changed for users in each release.
 - [TODO.md](TODO.md) — distilled feature ideas, known bugs, and release tasks. Concise and processed, not a running log.
 - [USER_NEEDS.md](USER_NEEDS.md) — the user needs behind the features. Kept separate so we solve problems, not just ship suggestions. Includes a dated list of user calls.
 
