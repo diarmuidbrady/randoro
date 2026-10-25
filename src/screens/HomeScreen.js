@@ -113,7 +113,7 @@ const ABSORB_DURATION = 300;
 // dot first moves, which on Android can be well after mount.
 const R_PEAK_MS = TRAVEL_DURATION * ICON_R_PEAK / ICON_TRACE_END;
 const HEARTBEAT_THUMP_MS = 650; // thump position in heartbeat.wav (see scripts/make-heartbeat.sh)
-const AUDIO_LATENCY_MS = 100;   // play() to sound; tune on device
+const AUDIO_LATENCY_MS = 500;   // play() to sound; tune on device
 // How far behind the dot (967 ms) each letter starts to appear, in travel progress.
 const LETTER_LAG = 967 / TRAVEL_DURATION;
 // A letter's fade-in, in travel progress (150 ms).
