@@ -33,7 +33,20 @@ Current as of 21 Oct 2026. Audio decisions are in [[project_audio_session]].
 
 - Durations are `{ minutes, seconds }` objects, converted to seconds when the workout starts.
 - Pings per round: `floor(workDuration / (avgFrequency + minGap))`. n pings make n + 1 gaps, each at least `minGap`, so no ping lands on a round edge.
-- Countdown into a work round: `countdown` events at 10, 5, 4, 3, 2 and 1 s out, in the phase before it. Any at or before that phase's start are dropped, so they don't collide with its start sound (with the default 5 s warm-up you hear 4-3-2-1). None between back-to-back work rounds, where they'd mix with pings. The beep is 500 Hz, lower than the 750 Hz ping, so it doesn't read as a punch cue.
+
+## Countdown
+
+- A `warning` beep plays 10 s before each work round, then a `countdown` beep at 3, 2 and 1 s. They play during the phase before the round.
+- If that phase is too short to fit a beep, the beep is skipped. This covers beeps that would fall before the phase starts, or at the same moment as its start sound.
+  - 5 s warm-up (the default): the warning would be 5 s before the workout begins, so you hear only 3-2-1.
+  - 10 s rest: the warning would play over the rest-start beeps, so it's skipped.
+- No countdown between back-to-back work rounds.
+
+Rejected:
+- 5-4-3-2-1: too many beeps on every rest.
+- A rising count in equal 25 Hz steps (400→500 Hz)
+- Softer sounds (decaying envelopes, fewer harmonics, a wood-block clack): 7–15 dB quieter than the ping over the first 200 ms, too quiet over music.
+
 
 ## Home animation
 

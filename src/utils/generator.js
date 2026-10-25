@@ -1,5 +1,10 @@
-// Seconds before a work round that get a countdown beep: a 10 s warning, then 5-4-3-2-1.
-const COUNTDOWN_BEEPS = [10, 5, 4, 3, 2, 1];
+// Beeps before a work round: a 10 s warning, then 3-2-1.
+const COUNTDOWN_BEEPS = [
+  { secondsOut: 10, type: 'warning' },
+  { secondsOut: 3,  type: 'countdown' },
+  { secondsOut: 2,  type: 'countdown' },
+  { secondsOut: 1,  type: 'countdown' },
+];
 
 /**
  * Generates random ping times within a single work round.
@@ -123,9 +128,9 @@ export function generateWorkout(config) {
   phases.forEach((phase, i) => {
     const prev = phases[i - 1];
     if (phase.type !== 'work' || !prev || prev.type === 'work') return;
-    for (const s of COUNTDOWN_BEEPS) {
-      const time = phase.start - s;
-      if (time > prev.start) events.push({ time, type: 'countdown' });
+    for (const { secondsOut, type } of COUNTDOWN_BEEPS) {
+      const time = phase.start - secondsOut;
+      if (time > prev.start) events.push({ time, type });
     }
   });
 

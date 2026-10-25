@@ -7,7 +7,8 @@
  *   double_rest.wav — two lower, longer beeps (rest start)
  *   warmup.wav      — three rising beeps     (warmup start)
  *   cooldown.wav    — three falling beeps    (cooldown start / done)
- *   countdown.wav   — one low beep           (5-4-3-2-1 before a work round)
+ *   warning.wav     — one long low beep      (10 s before a work round)
+ *   countdown.wav   — one long beep          (3-2-1 before a work round)
  *   silence.wav     — 5 min of 110 Hz sine at amplitude 0.05, 8 kHz mono (~4.8 MB)
  *
  * Beeps: 44.1 kHz, 16-bit mono PCM.
@@ -165,14 +166,16 @@ function buildSilenceWav(durationS) {
 const outDir = path.join(__dirname, '..', 'assets', 'sounds');
 fs.mkdirSync(outDir, { recursive: true });
 
+const ROUND_START_HZ = 625;
+
 const files = {
   'ping.wav':        [ { freq: 750, duration: 0.10 } ],
-  'double.wav':      [ { freq: 625, duration: 0.10 }, { freq: 625, duration: 0.10 } ],
+  'double.wav':      [ { freq: ROUND_START_HZ, duration: 0.10 }, { freq: ROUND_START_HZ, duration: 0.10 } ],
   'double_rest.wav': [ { freq: 500, duration: 0.20 }, { freq: 500, duration: 0.20 } ],
   'warmup.wav':      [ { freq: 500, duration: 0.20 }, { freq: 510, duration: 0.15 }, { freq: 600, duration: 0.10 } ],
   'cooldown.wav':    [ { freq: 600, duration: 0.20 }, { freq: 500, duration: 0.15 }, { freq: 500, duration: 0.10 } ],
-  // Lower than the ping so it isn't mistaken for a punch cue.
-  'countdown.wav':   [ { freq: 500, duration: 0.15 } ],
+  'warning.wav':     [ { freq: ROUND_START_HZ / 2,     duration: 0.60 } ],
+  'countdown.wav':   [ { freq: ROUND_START_HZ * 3 / 4, duration: 0.40 } ],
 };
 
 for (const [name, beeps] of Object.entries(files)) {
