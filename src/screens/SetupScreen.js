@@ -256,9 +256,7 @@ export default function SetupScreen({ navigation }) {
         {/* ── Section 2: Workout Style ────────────────────────────── */}
         <Text maxFontSizeMultiplier={3} style={styles.sectionLabel}>Workout Style</Text>
         <View style={styles.card}>
-          <View style={styles.styleTabs}>
-            <Segments labels={STYLE_LABELS} value={style} onChange={changeStyle} />
-          </View>
+          <Tabs labels={STYLE_LABELS} value={style} onChange={changeStyle} />
 
           {style === 'Preset' && (
             <View style={styles.pickerContainer}>
@@ -402,6 +400,9 @@ const WAITS = Array.from({ length: 30 }, (_, i) => i + 1);
 const EXEC_TIMES = Array.from({ length: 10 }, (_, i) => i + 1);
 const ATTACKS = Array.from({ length: 200 }, (_, i) => i + 1);
 
+const TAB_STRIP_COLOR = '#E5E7EB';
+const TAB_RADIUS = 10;
+
 // Keeps a value inside a picker's range, so the wheel can show it.
 const clamp = (value, items) => Math.min(items[items.length - 1], Math.max(items[0], value));
 
@@ -422,6 +423,50 @@ function Segments({ labels, value, onChange }) {
           </Text>
         </TouchableOpacity>
       ))}
+    </View>
+  );
+}
+
+// Browser-style tabs: the chosen tab is the card's colour and runs into the
+// body below, with curved corners where it meets the body.
+function Tabs({ labels, value, onChange }) {
+  return (
+    <View style={styles.tabStrip} accessibilityRole="tablist">
+      {labels.map((label, i) => {
+        const active = value === label;
+        // Dividers only sit between two unchosen tabs.
+        const divider = i > 0 && !active && labels[i - 1] !== value;
+        return (
+          <React.Fragment key={label}>
+            {i > 0 && <View style={[styles.tabDivider, !divider && styles.tabDividerHidden]} />}
+            <TouchableOpacity
+              style={[styles.tab, active && styles.tabActive]}
+              onPress={() => onChange(label)}
+              activeOpacity={active ? 1 : 0.6}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+            >
+              {active && (
+                <>
+                  <View style={[styles.tabFlare, styles.tabFlareLeft]}>
+                    <View style={[styles.tabFlareCut, styles.tabFlareCutLeft]} />
+                  </View>
+                  <View style={[styles.tabFlare, styles.tabFlareRight]}>
+                    <View style={[styles.tabFlareCut, styles.tabFlareCutRight]} />
+                  </View>
+                </>
+              )}
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={[styles.tabText, active && styles.tabTextActive]}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          </React.Fragment>
+        );
+      })}
     </View>
   );
 }
@@ -759,10 +804,65 @@ const styles = StyleSheet.create({
   },
 
   // Workout Style tabs
-  styleTabs: {
+  tabStrip: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    alignItems: 'stretch',
+    backgroundColor: TAB_STRIP_COLOR,
+    paddingHorizontal: TAB_RADIUS,
+    paddingTop: 6,
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderTopLeftRadius: TAB_RADIUS,
+    borderTopRightRadius: TAB_RADIUS,
+  },
+  tabActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  tabTextActive: {
+    color: '#111827',
+  },
+  tabDivider: {
+    width: 1,
+    marginVertical: 10,
+    backgroundColor: '#C4C8CE',
+  },
+  tabDividerHidden: {
+    backgroundColor: 'transparent',
+  },
+  // A white square with a strip-coloured quarter circle on top, at each
+  // bottom corner of the chosen tab, makes the curve into the body.
+  tabFlare: {
+    position: 'absolute',
+    bottom: 0,
+    width: TAB_RADIUS,
+    height: TAB_RADIUS,
+    backgroundColor: '#FFFFFF',
+  },
+  tabFlareLeft: {
+    left: -TAB_RADIUS,
+  },
+  tabFlareRight: {
+    right: -TAB_RADIUS,
+  },
+  tabFlareCut: {
+    flex: 1,
+    backgroundColor: TAB_STRIP_COLOR,
+  },
+  tabFlareCutLeft: {
+    borderBottomRightRadius: TAB_RADIUS,
+  },
+  tabFlareCutRight: {
+    borderBottomLeftRadius: TAB_RADIUS,
   },
   row: {
     flexDirection: 'row',
