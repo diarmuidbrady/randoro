@@ -332,7 +332,7 @@ export default function SetupScreen({ navigation }) {
 
           {style === 'Simple' && (
             <Text style={styles.simpleNote}>
-              A plain interval timer: round, rest and countdown beeps only.
+              A plain interval timer with no random beeps. You'll only hear beeps for rounds, rests and countdowns.
             </Text>
           )}
         </View>
