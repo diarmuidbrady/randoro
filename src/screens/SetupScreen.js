@@ -29,6 +29,7 @@ const DEFAULT_CONFIG = {
   cooldown: {minutes: 0, seconds: 5},
   intensity: 'Medium',
   combo: '1-2',
+  randomBeeps: true,
   flashEnabled: true,
   vibrationEnabled: true,
 };
@@ -44,6 +45,7 @@ export default function SetupScreen({ navigation }) {
   const [cooldown, setCooldown] = useState(DEFAULT_CONFIG.cooldown);
   const [intensity, setIntensity] = useState(DEFAULT_CONFIG.intensity);
   const [combo, setCombo] = useState(DEFAULT_CONFIG.combo);
+  const [randomBeeps, setRandomBeeps] = useState(DEFAULT_CONFIG.randomBeeps);
   const [flashEnabled, setFlashEnabled] = useState(DEFAULT_CONFIG.flashEnabled);
   const [vibrationEnabled, setVibrationEnabled] = useState(DEFAULT_CONFIG.vibrationEnabled);
   const [tooltipKey, setTooltipKey] = useState(null); // Used to reset tooltips
@@ -79,6 +81,7 @@ export default function SetupScreen({ navigation }) {
       cooldown: cool,
       avgFrequency,
       minGap,
+      randomBeeps,
     });
 
     navigation.navigate('Running', { workout, flashEnabled, vibrationEnabled });
@@ -154,7 +157,12 @@ export default function SetupScreen({ navigation }) {
         {/* ── Section 2: Workout Style ────────────────────────────── */}
         <Text maxFontSizeMultiplier={3} style={styles.sectionLabel}>Workout Style</Text>
         <View style={styles.card}>
-            <View style={styles.pickerContainer}>
+            <View style={styles.toggleRow}>
+              <Text style={styles.pickerLabel}>Random Beeps</Text>
+              <Switch value={randomBeeps} onValueChange={setRandomBeeps} />
+            </View>
+            {/* Intensity and Combo # only shape the random beeps */}
+            <View style={[styles.pickerContainer, !randomBeeps && styles.pickerContainerDisabled]}>
               {/* Intensity row */}
               <View style={styles.pickerRow}>
                 <Text style={styles.pickerLabel}>Intensity</Text>
@@ -167,6 +175,7 @@ export default function SetupScreen({ navigation }) {
                       key={label}
                       style={[styles.segmentButton, intensity === label && styles.segmentButtonActive]}
                       onPress={() => setIntensity(label)}
+                      disabled={!randomBeeps}
                     >
                       <Text 
                       numberOfLines={1}
@@ -191,6 +200,7 @@ export default function SetupScreen({ navigation }) {
                       key={label}
                       style={[styles.segmentButton, combo === label && styles.segmentButtonActive]}
                       onPress={() => setCombo(label)}
+                      disabled={!randomBeeps}
                     >
                       <Text 
                       numberOfLines={1}
@@ -491,6 +501,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 20,
     gap: 20,
+  },
+  pickerContainerDisabled: {
+    opacity: 0.35,
   },
   pickerRow: {
     flexDirection: 'row',

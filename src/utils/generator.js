@@ -53,6 +53,7 @@ function generatePingTimes(workDuration, n, minGap) {
  * @param {number} config.cooldown      - Cooldown duration (seconds)
  * @param {number} config.avgFrequency  - Average seconds between pings
  * @param {number} config.minGap        - Minimum seconds between pings
+ * @param {boolean} config.randomBeeps  - If false, no pings: a plain interval timer
  *
  * @returns {{ events: object[], phases: object[], totalDuration: number }}
  */
@@ -66,6 +67,7 @@ export function generateWorkout(config) {
     cooldown = 0,
     avgFrequency = 5,
     minGap = 2,
+    randomBeeps = true,
   } = config;
 
   const n = Math.max(1, Math.floor(workDuration / (avgFrequency + minGap)));
@@ -97,7 +99,7 @@ export function generateWorkout(config) {
     // Work round
     addEvent('round_start', { round: r });
     const roundStart = t;
-    const pingTimes = generatePingTimes(workDuration, n, minGap);
+    const pingTimes = randomBeeps ? generatePingTimes(workDuration, n, minGap) : [];
     phases.push({ type: 'work', start: t, end: t + workDuration, round: r, label: `Round ${r}` });
     pingTimes.forEach(pt => {
       events.push({ time: roundStart + pt, type: 'ping', round: r });

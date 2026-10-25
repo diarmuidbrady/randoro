@@ -31,7 +31,7 @@ Three screens on a stack navigator (`App.js`): Home → Setup → Running.
 - `events`: a time-sorted list of `{ time, type }` (`ping`, `round_start`, `rest_start`, `warmup_start`, `cooldown_start`, `warning`, `countdown`, `done`). These decide which sound plays.
 - `totalDuration`.
 
-Ping placement: n pings make n + 1 gaps, each at least `minGap`, so no ping lands on a round edge. Countdown beeps (`COUNTDOWN_BEEPS`: a `warning` 10 s out, then a `countdown` at 3-2-1) play in the phase before a work round. Any that would land at or before that phase's start are dropped, and back-to-back work rounds get none.
+Ping placement: n pings make n + 1 gaps, each at least `minGap`, so no ping lands on a round edge. `randomBeeps: false` (the Random Beeps switch) skips pings entirely. Countdown beeps (`COUNTDOWN_BEEPS`: a `warning` 10 s out, then a `countdown` at 3-2-1) play in the phase before a work round. Beeps that don't fit in that phase are dropped, and back-to-back work rounds get none.
 
 **RunningScreen is a 100 ms tick loop over that timeline.** Each tick computes elapsed time from wall-clock refs (`startTimeRef`, `pausedElapsedRef`). It then fires every event in `(lastEventElapsedRef, current]`. If more than 1 s passed since the last tick, the app was backgrounded: the tick catches up silently, with no sounds or haptics. Phase jumping and pause/resume work by rewriting those refs. Phase display is derived from `elapsed` and is never stored.
 
