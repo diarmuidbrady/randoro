@@ -16,7 +16,7 @@ A boxing interval timer that fires random audio cues so you have to react to the
 
 Tap **ENTER** to continue.
 
-**Running** — the screen shows the current phase (warm-up, work, rest, cool-down), a large countdown, and elapsed/remaining time. Audio cues fire at random intervals within the bounds you set. On each cue:
+**Running** — the screen shows the current phase (warm-up, work, rest, cool-down), a large countdown, and elapsed/remaining time. In a work round it also shows how many of the round's beeps have played, e.g. "2 of 3 beeps". Audio cues fire at random intervals within the bounds you set. On each cue:
 - A beep plays
 - The screen flashes (if enabled)
 - The phone vibrates (if enabled)

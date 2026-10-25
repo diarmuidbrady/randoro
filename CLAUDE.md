@@ -34,7 +34,7 @@ Three screens on a stack navigator (`App.js`): Home → Setup → Running. A tut
 
 Ping placement: n pings make n + 1 gaps. Each gap is `minGap` (combo/execution time, fixed) plus a random wait (anticipation) that averages about `avgFrequency`. The two are independent, and no ping lands on a round edge. On average, round length = (n + 1) × (`minGap` + wait). Manual caps n so the average wait stays at least 1 s. `randomBeeps: false` (the Simple tab) skips pings entirely. Countdown beeps (`COUNTDOWN_BEEPS`: a `warning` 10 s out, then a `countdown` at 3-2-1) play in the phase before a work round. Beeps that don't fit in that phase are dropped, and back-to-back work rounds get none.
 
-**RunningScreen is a 100 ms tick loop over that timeline.** Each tick computes elapsed time from wall-clock refs (`startTimeRef`, `pausedElapsedRef`). It then fires every event in `(lastEventElapsedRef, current]`. If more than 1 s passed since the last tick, the app was backgrounded: the tick catches up silently, with no sounds or haptics. Phase jumping and pause/resume work by rewriting those refs. Phase display is derived from `elapsed` and is never stored.
+**RunningScreen is a 100 ms tick loop over that timeline.** Each tick computes elapsed time from wall-clock refs (`startTimeRef`, `pausedElapsedRef`). It then fires every event in `(lastEventElapsedRef, current]`. If more than 1 s passed since the last tick, the app was backgrounded: the tick catches up silently, with no sounds or haptics. Phase jumping and pause/resume work by rewriting those refs. The phase display and the round's beep count ("2 of 3 beeps") are derived from `elapsed` and never stored.
 
 ## Audio constraints (read before touching audio)
 

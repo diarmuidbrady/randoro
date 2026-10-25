@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -137,6 +137,15 @@ export default function RunningScreen({ route, navigation }) {
   const phaseRemaining = Math.max(0, currentPhase.end - elapsed);
   const totalRemaining = Math.max(0, totalDuration - elapsed);
   const currentRoundCount = phases.filter(p => p.type === 'work').length;
+
+  // Beeps in this work round, and how many have fired. A ping fires on the tick
+  // that passes its time, so counting by elapsed matches what's been heard.
+  const roundPingTimes = useMemo(() => (
+    currentPhase.type === 'work'
+      ? events.filter(e => e.type === 'ping' && e.time >= currentPhase.start && e.time < currentPhase.end).map(e => e.time)
+      : []
+  ), [events, currentPhase]);
+  const roundPingsFired = roundPingTimes.filter(t => t <= elapsed).length;
 
   // ── Sound helper ──────────────────────────────────────────
   const playSound = useCallback(async (player) => {
@@ -333,9 +342,16 @@ export default function RunningScreen({ route, navigation }) {
         </TouchableOpacity>
         <View style={styles.roundInfo}>
           {currentPhase.type === 'work' ? (
-            <Text style={[styles.roundText, { color: fgColor }]}>
-              Round {currentPhase.round} of {currentRoundCount}
-            </Text>
+            <>
+              <Text style={[styles.roundText, { color: fgColor }]}>
+                Round {currentPhase.round} of {currentRoundCount}
+              </Text>
+              {roundPingTimes.length > 0 && (
+                <Text style={[styles.beepCountText, { color: fgColor }]}>
+                  {roundPingsFired} of {roundPingTimes.length} {roundPingTimes.length === 1 ? 'beep' : 'beeps'}
+                </Text>
+              )}
+            </>
           ) : (
             <Text style={[styles.roundText, { color: fgColor }]}>{currentPhase.label}</Text>
           )}
@@ -436,6 +452,13 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  beepCountText: {
+    fontSize: 15,
+    fontVariant: ['tabular-nums'],
+    textAlign: 'center',
+    opacity: 0.7,
+    marginTop: 2,
   },
   statsRow: {
     flexDirection: 'row',
