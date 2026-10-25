@@ -32,13 +32,13 @@ const DEFAULT_CONFIG = {
   style: 'Preset',
   intensity: 'Medium',
   combo: '1-2',
-  setBy: 'Wait',
+  setBy: 'Time',
   flashEnabled: true,
   vibrationEnabled: true,
 };
 
 const STYLE_LABELS = ['Preset', 'Manual', 'Simple'];
-const SET_BY_LABELS = ['Wait', 'Attacks'];
+const SET_BY_LABELS = ['Time', 'Count'];
 
 const TOOLTIPS = {
   presetIntensity: {
@@ -47,15 +47,19 @@ const TOOLTIPS = {
   },
   presetAttackLength: {
     title: 'Attack Length',
-    text: 'The time you get after each beep, based on the number of punches you throw: 1-2, 3-4 or 5-6+. More punches get more time.',
+    text: 'The execution time: the fixed time you get to attack after each beep, based on the number of punches you throw: 1-2, 3-4 or 5-6+. More punches get more time.',
   },
   manualIntensity: {
     title: 'Intensity',
-    text: 'How often the beeps fire. Set it by Wait, the approximate seconds before each beep, or by Attacks, the number of beeps per round. Each wait is random, so the beeps stay unpredictable.',
+    text: 'How often the beeps fire. Set it by Time, the avg. anticipation time before each beep, or by Count, the number of attacks per round. Anticipation is the variable part: each one is random, so the beeps stay unpredictable.',
   },
   manualAttackLength: {
     title: 'Attack Length',
-    text: 'The time you get after each beep, in seconds. Set it to fit the number of punches you throw. The random wait before the next beep comes on top of it.',
+    text: 'The execution time: the fixed time you get to attack after each beep, in seconds. Set it to fit the number of punches you throw. The variable anticipation time before the next beep comes on top of it.',
+  },
+  manualBetweenBeeps: {
+    title: 'Avg. Time Between Beeps',
+    text: 'The avg. time from one beep to the next: the variable anticipation time plus the fixed execution time. It comes from the settings above.',
   },
 };
 
@@ -101,7 +105,7 @@ export default function SetupScreen({ navigation }) {
   // make them fit; the user is told and Start is blocked.
   const work = parseSeconds(workDuration);
   const maxAttacks = maxPings(work, execTime);
-  const manualAttacks = setBy === 'Wait'
+  const manualAttacks = setBy === 'Time'
     ? Math.min(pingsForWait(work, wait, execTime), maxAttacks)
     : attacks;
   let manualError = null;
@@ -110,9 +114,10 @@ export default function SetupScreen({ navigation }) {
   } else if (manualAttacks > maxAttacks) {
     manualError = `${attacks} attacks don't fit a ${formatTime(work)} round with a ${execTime} s attack length (max ${maxAttacks}).`;
   }
-  const manualHint = setBy === 'Wait'
-    ? `≈ ${manualAttacks} attacks per ${formatTime(work)} round`
-    : `≈ ${Math.round(avgWaitFor(work, attacks, execTime))} s wait before each attack`;
+  const avgAnticipation = setBy === 'Time' ? wait : Math.round(avgWaitFor(work, attacks, execTime));
+  const manualHint = setBy === 'Time'
+    ? `${manualAttacks} attacks per ${formatTime(work)} round`
+    : `Avg. anticipation time: ${avgAnticipation} s`;
 
   const changeStyle = (next) => {
     const from = lastBeepStyleRef.current;
@@ -124,7 +129,7 @@ export default function SetupScreen({ navigation }) {
       setAttacks(clamp(pingsForWait(work, presetWait, presetExec), ATTACKS));
     }
     if (next === 'Preset' && from === 'Manual') {
-      const manualWait = setBy === 'Wait' ? wait : avgWaitFor(work, attacks, execTime);
+      const manualWait = setBy === 'Time' ? wait : avgWaitFor(work, attacks, execTime);
       setIntensity(nearestKey(INTENSITY_MAP, manualWait));
       setCombo(nearestKey(COMBO_MAP, execTime));
     }
@@ -135,7 +140,7 @@ export default function SetupScreen({ navigation }) {
   // The value being switched to starts from the one it replaces.
   const changeSetBy = (next) => {
     if (next === setBy) return;
-    if (next === 'Attacks') setAttacks(clamp(manualAttacks, ATTACKS));
+    if (next === 'Count') setAttacks(clamp(manualAttacks, ATTACKS));
     else setWait(clamp(Math.round(avgWaitFor(work, attacks, execTime)), WAITS));
     setSetBy(next);
   };
@@ -278,21 +283,21 @@ export default function SetupScreen({ navigation }) {
 
           {style === 'Manual' && (
             <View style={styles.pickerContainer}>
-              {/* Intensity: by approximate wait or by attacks per round */}
+              {/* Intensity: by avg. anticipation time, or by attacks per round */}
               <Field title="Intensity" onHelp={() => setTooltipKey('manualIntensity')}>
                 <View style={styles.row}>
                   <Segments labels={SET_BY_LABELS} value={setBy} onChange={changeSetBy} />
                 </View>
                 <View style={styles.valueRow}>
-                  {setBy === 'Wait' ? (
+                  {setBy === 'Time' ? (
                     <>
-                      <Text style={styles.fieldLabel}>Approx. Wait</Text>
+                      <Text style={styles.fieldLabel}>Avg. Anticipation Time</Text>
                       <NumberPicker
                         items={WAITS}
                         value={wait}
                         onChange={setWait}
                         formatLabel={(n) => `${n} s`}
-                        accessibilityLabel="Approximate wait"
+                        accessibilityLabel="Average anticipation time"
                       />
                     </>
                   ) : (
@@ -327,6 +332,21 @@ export default function SetupScreen({ navigation }) {
                   />
                 </View>
               </Field>
+
+              {/* Each gap between beeps is the anticipation time plus the execution time */}
+              {!manualError && (
+                <>
+                  <View style={styles.fieldDivider} />
+                  <Field title="Avg. Time Between Beeps" onHelp={() => setTooltipKey('manualBetweenBeeps')}>
+                    <View style={styles.valueRow}>
+                      <Text style={styles.fieldLabel}>Variable Anticipation + Fixed Execution</Text>
+                      <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.valueDisplay, styles.valueDerived]}>
+                        {avgAnticipation + execTime} s
+                      </Text>
+                    </View>
+                  </Field>
+                </>
+              )}
             </View>
           )}
 
@@ -901,6 +921,10 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     textAlign: 'right',
     minWidth: 48,
+  },
+  // A value worked out from the fields above, not a picker.
+  valueDerived: {
+    color: '#6B7280',
   },
   hintText: {
     fontSize: 13,
