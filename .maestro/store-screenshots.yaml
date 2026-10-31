@@ -1,0 +1,45 @@
+# App Store screenshots 2–5, in store/app-store.md's shot-list order.
+# Run by scripts/store-screenshots.sh, which copies the shots from Maestro's
+# takeScreenshot/ folder and takes shot 1 (Home mid-sweep) itself.
+appId: com.diarmuidbrady.randoro
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "GET READY"
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn: "GET READY"
+
+# A fresh install opens How it works.
+- extendedWaitUntil:
+    visible: "(?i)how it works"
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: 05-how-it-works
+- tapOn: "Skip"
+- waitForAnimationToEnd
+- takeScreenshot: 02-setup-preset
+
+- tapOn: "Manual"
+- scrollUntilVisible:
+    element: "Avg. Time Between Beeps"
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: 03-setup-manual
+
+- scrollUntilVisible:
+    element: "ENTER"
+- tapOn: "ENTER"
+- tapOn: "BEGIN"
+- tapOn: "›" # skip the warm-up
+- extendedWaitUntil:
+    visible: "[1-9][0-9]* of [0-9]+ beeps?"
+    timeout: 60000
+# A beep flashes the screen. Pause until the flash is over, then resume
+# (which doesn't flash) and capture straight away.
+- tapOn: "PAUSE"
+- waitForAnimationToEnd
+- tapOn: "RESUME"
+- takeScreenshot: 04-running
+- stopApp

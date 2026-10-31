@@ -162,6 +162,7 @@ scripts/
   generate-sounds.js   Generates beep WAVs and the silence track
   make-heartbeat.sh    Cuts the home-screen heartbeat from a source mp3
   make-icons.sh        Renders the app icons and splash image from the icon SVG
+  store-screenshots.sh Captures the App Store screenshots on the iOS simulators (uses Maestro)
 
 assets/sounds/         Generated WAV files (gitignored; run generate-sounds.js)
 assets/heartbeat.wav   Home-screen heartbeat (tracked)
@@ -189,6 +190,7 @@ node scripts/generate-sounds.js
 Top-level docs:
 
 - [CHANGELOG.md](CHANGELOG.md) — what changed for users in each release.
+- [store/](store/) — App Store and Google Play listing text, copied into the stores at each release. Screenshots are generated into `store/screenshots/` by `scripts/store-screenshots.sh` and not tracked.
 - [TODO.md](TODO.md) — distilled feature ideas, known bugs, and release tasks. Concise and processed, not a running log.
 - [USER_NEEDS.md](USER_NEEDS.md) — the user needs behind the features. Kept separate so we solve problems, not just ship suggestions. Includes a dated list of user calls.
 
