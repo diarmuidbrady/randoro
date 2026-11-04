@@ -7,6 +7,11 @@ export const PHASE_COLORS = {
   done:     { background: '#1C1C1E', text: '#FFFFFF' },
 };
 
+// Screen Flash styles on a beep. Soft fades the work red to pink and back,
+// Sharp swaps the background and text colours, Minimal only pulses the timer.
+export const FLASH_STYLES = ['Soft', 'Sharp', 'Minimal'];
+export const SOFT_FLASH_COLOR = '#FCA5A5';
+
 // Intensity sets the average wait (anticipation) in seconds, the random part
 // of each gap between pings, on top of the combo time.
 export const INTENSITY_MAP = { Low: 9, Medium: 6, High: 3 };

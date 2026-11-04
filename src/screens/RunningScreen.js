@@ -12,17 +12,19 @@ import { useAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PHASE_COLORS } from '../constants/theme';
+import { PHASE_COLORS, SOFT_FLASH_COLOR } from '../constants/theme';
 import { formatTime, formatElapsed } from '../utils/time';
 
 const TICK_MS = 100;
-const FLASH_DURATION_MS = 300;
+const FLASH_DURATION_MS = 300;     // Sharp: how long the colours stay swapped
+const FADE_DURATION_MS = 200;      // Soft and Minimal: fade there and back
+const MINIMAL_PULSE_OPACITY = 0.3; // Minimal: the timer's opacity at the pulse's peak
 const PING_UPDATE_MS = 20;    // how often the ping player reports its position while playing
 const PING_FALLBACK_MS = 400; // flash anyway if the ping never reports playing
 const SILENCE_HANDOVER_S = 3;
 
 export default function RunningScreen({ route, navigation }) {
-  const { workout, flashEnabled, vibrationEnabled } = route.params;
+  const { workout, flashEnabled, flashStyle = 'Soft', vibrationEnabled } = route.params;
   const { events, phases, totalDuration } = workout;
   const insets = useSafeAreaInsets();
 
@@ -157,14 +159,18 @@ export default function RunningScreen({ route, navigation }) {
   }, [doublePlayer, doubleRestPlayer, warmupPlayer, cooldownPlayer]);
 
   // ── Flash helper ──────────────────────────────────────────
+  // flashAnim runs 0 → 1 → 0. Soft and Minimal draw from it on the native
+  // driver; Sharp only uses it as a timer for the colour swap.
   const triggerFlash = useCallback(() => {
     if (!flashEnabled) return;
-    setIsFlashing(true);
+    const sharp = flashStyle === 'Sharp';
+    const half = (sharp ? FLASH_DURATION_MS : FADE_DURATION_MS) / 2;
+    if (sharp) setIsFlashing(true);
     Animated.sequence([
-      Animated.timing(flashAnim, { toValue: 1, duration: FLASH_DURATION_MS / 2, useNativeDriver: true }),
-      Animated.timing(flashAnim, { toValue: 0, duration: FLASH_DURATION_MS / 2, useNativeDriver: true }),
-    ]).start(() => setIsFlashing(false));
-  }, [flashEnabled, flashAnim]);
+      Animated.timing(flashAnim, { toValue: 1, duration: half, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 0, duration: half, useNativeDriver: true }),
+    ]).start(() => { if (sharp) setIsFlashing(false); });
+  }, [flashEnabled, flashStyle, flashAnim]);
 
   // ── Ping flash + haptic, in step with the sound ───────────
   // The flash and haptic fire once the ping's position starts moving.
@@ -301,79 +307,92 @@ export default function RunningScreen({ route, navigation }) {
   const handlePrevPhase = () => jumpToPhaseIndex(currentPhaseIndex - 1);
   const handleNextPhase = () => jumpToPhaseIndex(currentPhaseIndex + 1);
 
-  // ── Colours: invert on flash ──────────────────────────────
+  // ── Colours: invert on a Sharp flash ──────────────────────
   const bgColor = isFlashing ? phaseColors.text : phaseColors.background;
   const fgColor = isFlashing ? phaseColors.background : phaseColors.text;
+  const timerOpacity = flashStyle === 'Minimal'
+    ? flashAnim.interpolate({ inputRange: [0, 1], outputRange: [1, MINIMAL_PULSE_OPACITY] })
+    : 1;
 
   return (
-    <View style={[styles.container, { backgroundColor: bgColor, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      <StatusBar barStyle="light-content" />
+    <View style={[styles.container, { backgroundColor: bgColor }]}>
+      {/* Soft: a pink layer behind the content fades in and out. The native
+          driver animates opacity but not backgroundColor. */}
+      {flashStyle === 'Soft' && (
+        <Animated.View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { backgroundColor: SOFT_FLASH_COLOR, opacity: flashAnim }]}
+        />
+      )}
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <StatusBar barStyle="light-content" />
 
-      {/* Top bar */}
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={handleStop} hitSlop={styles.hitSlop}>
-          <Text maxFontSizeMultiplier={2} style={[styles.topBarIcon, { color: fgColor }]}>✕</Text>
-        </TouchableOpacity>
-        <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.phaseLabel, { color: fgColor }]}>{currentPhase.label}</Text>
-        <View style={styles.hitSlop} />
-      </View>
-
-      {/* Large countdown */}
-      <View style={styles.timerBlock}>
-        <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.timerText, { color: fgColor }]}>
-          {formatTime(phaseRemaining)}
-        </Text>
-      </View>
-
-      {/* Round info */}
-      <View style={styles.roundBlock}>
-        <TouchableOpacity onPress={handlePrevPhase} hitSlop={styles.hitSlop}>
-          <Text maxFontSizeMultiplier={2} style={[styles.arrowText, { color: fgColor }]}>‹</Text>
-        </TouchableOpacity>
-        <View style={styles.roundInfo}>
-          {currentPhase.type === 'work' ? (
-            <>
-              <Text style={[styles.roundText, { color: fgColor }]}>
-                Round {currentPhase.round} of {currentRoundCount}
-              </Text>
-              {roundPingTimes.length > 0 && (
-                <Text style={[styles.beepCountText, { color: fgColor }]}>
-                  {roundPingsFired} of {roundPingTimes.length} {roundPingTimes.length === 1 ? 'beep' : 'beeps'}
-                </Text>
-              )}
-            </>
-          ) : (
-            <Text style={[styles.roundText, { color: fgColor }]}>{currentPhase.label}</Text>
-          )}
+        {/* Top bar */}
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={handleStop} hitSlop={styles.hitSlop}>
+            <Text maxFontSizeMultiplier={2} style={[styles.topBarIcon, { color: fgColor }]}>✕</Text>
+          </TouchableOpacity>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.phaseLabel, { color: fgColor }]}>{currentPhase.label}</Text>
+          <View style={styles.hitSlop} />
         </View>
-        <TouchableOpacity onPress={handleNextPhase} hitSlop={styles.hitSlop}>
-          <Text maxFontSizeMultiplier={2} style={[styles.arrowText, { color: fgColor }]}>›</Text>
-        </TouchableOpacity>
-      </View>
 
-      {/* Elapsed / Remaining */}
-      <View style={styles.statsRow}>
-        <View style={styles.statBlock}>
-          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.statValue, { color: fgColor }]}>{formatElapsed(elapsed)}</Text>
-          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.statLabel, { color: fgColor, opacity: 0.6 }]}>Elapsed</Text>
-        </View>
-        <View style={styles.statBlock}>
-          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.statValue, { color: fgColor }]}>{formatTime(totalRemaining)}</Text>
-          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.statLabel, { color: fgColor, opacity: 0.6 }]}>Remaining</Text>
-        </View>
-      </View>
-
-      {/* Play/Pause */}
-      <View style={styles.controlsBlock}>
-        <TouchableOpacity
-          style={[styles.playButton, { borderColor: fgColor, opacity: isDone ? 0.4 : 1 }]}
-          onPress={handleStartPause}
-          disabled={isDone}
-        >
-          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.playButtonText, { color: fgColor }]}>
-            {isDone ? 'DONE' : isRunning ? 'PAUSE' : elapsed > 0 ? 'RESUME' : 'BEGIN'}
+        {/* Large countdown */}
+        <Animated.View style={[styles.timerBlock, { opacity: timerOpacity }]}>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.timerText, { color: fgColor }]}>
+            {formatTime(phaseRemaining)}
           </Text>
-        </TouchableOpacity>
+        </Animated.View>
+
+        {/* Round info */}
+        <View style={styles.roundBlock}>
+          <TouchableOpacity onPress={handlePrevPhase} hitSlop={styles.hitSlop}>
+            <Text maxFontSizeMultiplier={2} style={[styles.arrowText, { color: fgColor }]}>‹</Text>
+          </TouchableOpacity>
+          <View style={styles.roundInfo}>
+            {currentPhase.type === 'work' ? (
+              <>
+                <Text style={[styles.roundText, { color: fgColor }]}>
+                  Round {currentPhase.round} of {currentRoundCount}
+                </Text>
+                {roundPingTimes.length > 0 && (
+                  <Text style={[styles.beepCountText, { color: fgColor }]}>
+                    {roundPingsFired} of {roundPingTimes.length} {roundPingTimes.length === 1 ? 'beep' : 'beeps'}
+                  </Text>
+                )}
+              </>
+            ) : (
+              <Text style={[styles.roundText, { color: fgColor }]}>{currentPhase.label}</Text>
+            )}
+          </View>
+          <TouchableOpacity onPress={handleNextPhase} hitSlop={styles.hitSlop}>
+            <Text maxFontSizeMultiplier={2} style={[styles.arrowText, { color: fgColor }]}>›</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Elapsed / Remaining */}
+        <View style={styles.statsRow}>
+          <View style={styles.statBlock}>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.statValue, { color: fgColor }]}>{formatElapsed(elapsed)}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.statLabel, { color: fgColor, opacity: 0.6 }]}>Elapsed</Text>
+          </View>
+          <View style={styles.statBlock}>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.statValue, { color: fgColor }]}>{formatTime(totalRemaining)}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.statLabel, { color: fgColor, opacity: 0.6 }]}>Remaining</Text>
+          </View>
+        </View>
+
+        {/* Play/Pause */}
+        <View style={styles.controlsBlock}>
+          <TouchableOpacity
+            style={[styles.playButton, { borderColor: fgColor, opacity: isDone ? 0.4 : 1 }]}
+            onPress={handleStartPause}
+            disabled={isDone}
+          >
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.playButtonText, { color: fgColor }]}>
+              {isDone ? 'DONE' : isRunning ? 'PAUSE' : elapsed > 0 ? 'RESUME' : 'BEGIN'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );

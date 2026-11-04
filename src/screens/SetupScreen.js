@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Alert,
   Modal,
+  AccessibilityInfo,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -18,6 +19,7 @@ import {
   INTENSITY_LABELS,
   COMBO_MAP,
   COMBO_LABELS,
+  FLASH_STYLES,
 } from '../constants/theme';
 import { formatTime, parseSeconds } from '../utils/time';
 import { generateWorkout, pingsForWait, maxPings, avgWaitFor } from '../utils/generator';
@@ -34,6 +36,7 @@ const DEFAULT_CONFIG = {
   combo: '1-2',
   setBy: 'Time',
   flashEnabled: true,
+  flashStyle: 'Soft',
   vibrationEnabled: true,
 };
 
@@ -88,6 +91,7 @@ export default function SetupScreen({ navigation }) {
     parseSeconds(DEFAULT_CONFIG.workDuration), wait, execTime,
   ));
   const [flashEnabled, setFlashEnabled] = useState(DEFAULT_CONFIG.flashEnabled);
+  const [flashStyle, setFlashStyle] = useState(DEFAULT_CONFIG.flashStyle);
   const [vibrationEnabled, setVibrationEnabled] = useState(DEFAULT_CONFIG.vibrationEnabled);
   const [tooltipKey, setTooltipKey] = useState(null); // Used to reset tooltips
   // Preset or Manual, whichever was used last, so its values carry over to the other.
@@ -100,6 +104,13 @@ export default function SetupScreen({ navigation }) {
       .then((seen) => { if (!seen) navigation.navigate('HowItWorks'); })
       .catch(() => {});
   }, [navigation]);
+
+  // With Reduce Motion on, the flash starts as Minimal: the background stays still.
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((reduce) => { if (reduce) setFlashStyle('Minimal'); })
+      .catch(() => {});
+  }, []);
 
   // Manual: the attacks per round and whether they fit. Nothing is changed to
   // make them fit; the user is told and Start is blocked.
@@ -179,6 +190,7 @@ export default function SetupScreen({ navigation }) {
     navigation.navigate('Running', {
       workout,
       flashEnabled: randomBeeps && flashEnabled,
+      flashStyle,
       vibrationEnabled: randomBeeps && vibrationEnabled,
     });
   };
@@ -369,6 +381,11 @@ export default function SetupScreen({ navigation }) {
               disabled={style === 'Simple'}
             />
           </View>
+          {flashEnabled && style !== 'Simple' && (
+            <View style={styles.flashStyleRow}>
+              <Segments labels={FLASH_STYLES} value={flashStyle} onChange={setFlashStyle} />
+            </View>
+          )}
           <View style={styles.toggleRow}>
             <Text style={styles.toggleLabel}>Vibration</Text>
             <Switch
@@ -948,6 +965,11 @@ const styles = StyleSheet.create({
   toggleLabel: {
     fontSize: 15,
     color: '#374151',
+  },
+  flashStyleRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
 
   // Start button

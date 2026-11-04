@@ -12,7 +12,7 @@ A boxing interval timer that fires random audio cues so you have to react to the
   - *Preset* (default) — *Intensity* sets how often cues fire (Low fires infrequently, High fires constantly). *Attack Length* is the execution time, the fixed time you get to attack after each cue, based on the number of punches you throw (1-2 gives a short window, 5-6+ a longer one).
   - *Manual* — *Intensity* is set by *Time* (*Avg. Anticipation Time*, the variable wait before each cue) or by *Count* (*Attacks per Round*). *Attack Length* is the fixed *Execution Time* after each cue in seconds, set to fit the number of punches you throw. *Avg. Time Between Beeps* shows the variable anticipation time plus the fixed execution time. If the attacks don't fit the round, you're told and the workout won't start until you change something.
   - *Simple* — no random cues, a plain interval timer.
-- **Feedback** — toggle screen flash and vibration on each cue. Greyed out in Simple, since there are no cues.
+- **Feedback** — toggle screen flash and vibration on each cue. The flash is *Soft* (default, the red fades to pink and back), *Sharp* (red snaps to white) or *Minimal* (only the timer pulses; the default when Reduce Motion is on). Greyed out in Simple, since there are no cues.
 
 Tap **ENTER** to continue.
 
