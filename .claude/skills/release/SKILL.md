@@ -14,14 +14,13 @@ Work through the steps in order. Ask the user anything you can't settle from the
 
 ## 2. Update the docs
 
-README, TODO.md, USER_NEEDS.md, CLAUDE.md and `memory/`. Keep them concise, clear and minimal: say each thing once, in plain words, and describe the app as it is now.
+README, TODO.md, USER_NEEDS.md and CLAUDE.md. Keep them concise, clear and minimal: say each thing once, in plain words, and describe the app as it is now.
 
 - README: features, screens and project structure match the app.
 - TODO.md: remove what shipped; keep release tasks current.
 - USER_NEEDS.md: add any new user calls. Name no one in tracked files.
-- CLAUDE.md: commands and architecture notes match the code.
-- `memory/`: update the "current" files (`project_context.md` current state, `project_technical.md`) and the date in `memory/memory.md`. Leave history files alone.
-- Check links, file names and labels against the code, not from memory.
+- CLAUDE.md: the store status line is current.
+- Check links, file names and labels against the code.
 
 ## 3. Update app.json
 
@@ -65,5 +64,5 @@ Run `scripts/store-screenshots.sh`. It's unattended: for the iPhone 17 Pro and i
 
 ## 7. Before upload
 
-- Build the release (CLAUDE.md has the steps) and test it on a physical iPhone and Android phone.
+- Build the release (the README has the steps) and test it on a physical iPhone and Android phone.
 - After it ships, tag the release commit with the version: `git tag 1.2.0`.

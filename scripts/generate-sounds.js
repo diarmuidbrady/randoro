@@ -15,11 +15,7 @@
  * Each beep has a 20 ms linear fade-in + fade-out envelope.
  * Multi-beep files have 80 ms silence between beeps, and are padded to MIN_FILE_S.
  *
- * Silence: low-amplitude 110 Hz drone (not actual silence) at 8 kHz to keep file
- * size down. Played non-looped at volume 0.05 in the app — Bluetooth audio routing
- * in background and on lock screen needs constant non-zero volume. RunningScreen
- * alternates two players on this file so workouts can run longer than 5 minutes.
- * See memory/project_audio_journey_log.md.
+ * Silence: low-amplitude 110 Hz drone at 8 kHz to keep file size down.
  */
 
 const fs   = require('fs');
@@ -28,9 +24,7 @@ const path = require('path');
 const SAMPLE_RATE = 44100;
 const FADE_S      = 0.02;   // 20 ms fade at each end of a beep
 const GAP_S       = 0.08;   // 80 ms silence between beeps
-// Minimum file length. On Android, the first play of a clip shorter than
-// ExoPlayer's audio buffer (up to 750 ms) is silent.
-const MIN_FILE_S  = 1.0;
+const MIN_FILE_S  = 1.0;    // beeps are padded to this length
 
 // A pure sine reads as quiet: all its energy sits at one frequency and its
 // average (RMS) level is low relative to its peak. Summing odd harmonics

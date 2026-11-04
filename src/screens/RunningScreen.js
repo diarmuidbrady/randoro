@@ -39,8 +39,6 @@ export default function RunningScreen({ route, navigation }) {
   const flashAnim = useRef(new Animated.Value(0)).current;
 
   // ── Audio players (expo-audio) ────────────────────────────
-  // keepAudioSessionActive stops iOS deactivating the session between beeps,
-  // which would suspend the app in the background.
   const playerOpts = { keepAudioSessionActive: true };
   const pingPlayer       = useAudioPlayer(require('../../assets/sounds/ping.wav'), { ...playerOpts, updateInterval: PING_UPDATE_MS });
   const doublePlayer     = useAudioPlayer(require('../../assets/sounds/double.wav'), playerOpts);
@@ -49,11 +47,8 @@ export default function RunningScreen({ route, navigation }) {
   const cooldownPlayer   = useAudioPlayer(require('../../assets/sounds/cooldown.wav'), playerOpts);
   const warningPlayer    = useAudioPlayer(require('../../assets/sounds/warning.wav'), playerOpts);
   const countdownPlayer  = useAudioPlayer(require('../../assets/sounds/countdown.wav'), playerOpts);
-  // A near-silent 5 min 110 Hz tone keeps audio flowing, which background
-  // playback and Bluetooth routing need. Two players hand over before the end
-  // (loop=true leaves a gap). It plays while this screen is open, because an
-  // idle Bluetooth output clips the first ~0.5 s of a beep.
-  // See memory/project_audio_journey_log.md.
+  // A near-silent 110 Hz tone plays while this screen is open, alternating
+  // between two players.
   const silenceOpts = { keepAudioSessionActive: true, updateInterval: TICK_MS };
   const silenceA = useAudioPlayer(require('../../assets/sounds/silence.wav'), silenceOpts);
   const silenceB = useAudioPlayer(require('../../assets/sounds/silence.wav'), silenceOpts);
@@ -101,16 +96,13 @@ export default function RunningScreen({ route, navigation }) {
     if (!isRunning) return;
     const players = [silenceA, silenceB];
 
-    // Android pauses JS timers in the background; the silence players' status updates drive the timer instead.
+    // On Android the silence players' status updates drive the tick.
     const subs = Platform.OS === 'android'
       ? players.map((player, i) => player.addListener('playbackStatusUpdate', () => {
           if (i === activeSilenceRef.current) tickRef.current?.();
         }))
       : [];
 
-    // The lock-screen media session starts the foreground service Android needs
-    // to keep the app alive in the background. It's on the ping player so its
-    // play/pause button can't stop the silence stream.
     if (Platform.OS === 'android') {
       pingPlayer.setActiveForLockScreen(true, { title: 'randoro', artist: 'Workout in progress' });
     }
@@ -150,7 +142,6 @@ export default function RunningScreen({ route, navigation }) {
   // ── Sound helper ──────────────────────────────────────────
   const playSound = useCallback(async (player) => {
     try {
-      // Await the rewind, or play can run first and the beep is dropped.
       await player.seekTo(0);
       player.play();
     } catch {
@@ -176,8 +167,7 @@ export default function RunningScreen({ route, navigation }) {
   }, [flashEnabled, flashAnim]);
 
   // ── Ping flash + haptic, in step with the sound ───────────
-  // Bluetooth delays the sound by ~200 ms. The player's position only moves once
-  // the ping is audible, so the flash and haptic wait for that.
+  // The flash and haptic fire once the ping's position starts moving.
   const pingCueRef = useRef(null); // fallback timer while a ping cue is pending
 
   const firePingCue = useCallback(() => {

@@ -167,7 +167,6 @@ scripts/
 assets/sounds/         Generated WAV files (gitignored; run generate-sounds.js)
 assets/heartbeat.wav   Home-screen heartbeat (tracked)
 assets/randoro-icon.svg  App icon source; the home-screen trace follows it
-memory/                Engineering notes: current summaries and dated history
 
 TODO.md                Feature ideas, bugs, release tasks
 USER_NEEDS.md          User needs behind the features
@@ -177,7 +176,7 @@ USER_NEEDS.md          User needs behind the features
 
 Beep files (`ping`, `double`, `double_rest`, `warmup`, `cooldown`, `warning`, `countdown`) generated at 44.1 kHz, 16-bit, mono PCM. Each is a harmonic-rich tone (odd harmonics over the fundamental) for perceived loudness, normalised to its true measured peak. Every beep file is padded to 1 s, because Android's ExoPlayer plays nothing on the first play of a shorter clip.
 
-The silence track is 5 minutes of low-amplitude 110 Hz sine at 8 kHz mono (~4.8 MB). Two players take turns playing it at low volume while the running screen is open, so audio never stops. Continuous audio keeps background beeps firing, holds the Bluetooth route open, and keeps an idle Bluetooth output from clipping the first beep. See `memory/project_audio_session.md`.
+The silence track is 5 minutes of low-amplitude 110 Hz sine at 8 kHz mono (~4.8 MB). Two players take turns playing it at low volume while the running screen is open, so audio never stops. Continuous audio keeps background beeps firing, holds the Bluetooth route open, and keeps an idle Bluetooth output from clipping the first beep.
 
 Regenerate when the script changes:
 
@@ -193,10 +192,3 @@ Top-level docs:
 - [store/](store/) — App Store and Google Play listing text, copied into the stores at each release. Screenshots are generated into `store/screenshots/` by `scripts/store-screenshots.sh` and not tracked.
 - [TODO.md](TODO.md) — distilled feature ideas, known bugs, and release tasks. Concise and processed, not a running log.
 - [USER_NEEDS.md](USER_NEEDS.md) — the user needs behind the features. Kept separate so we solve problems, not just ship suggestions. Includes a dated list of user calls.
-
-The `memory/` folder holds engineering notes, written for an AI assistant between sessions but readable by anyone. Start with the index:
-
-- [memory/memory.md](memory/memory.md) — index of the notes: current summaries kept in step with the code, and dated history.
-- [memory/project_context.md](memory/project_context.md) — what Randoro is, current state, direction.
-- [memory/project_technical.md](memory/project_technical.md) — stack and key technical decisions.
-- [memory/project_audio_journey_log.md](memory/project_audio_journey_log.md) — full chronological record of the Bluetooth + background audio investigation.
