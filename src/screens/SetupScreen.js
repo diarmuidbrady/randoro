@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WheelPicker from '../components/WheelPicker';
 import { Segments } from '../components/Controls';
+import { Chevron } from '../components/CallShape';
 import FocusSection, { newCall } from '../components/FocusSection';
 import IntensitySection from '../components/IntensitySection';
 import {
@@ -27,11 +28,18 @@ import {
   tourSteps,
   switchTourPath,
 } from '../components/CoachMarks';
-import { FLASH_STYLES, LEVELS } from '../constants/theme';
+import { FLASH_STYLES, LEVELS, FACE_COLOR } from '../constants/theme';
 import { formatTime, parseSeconds } from '../utils/time';
 import { generateWorkout, maxPings, meanAttack } from '../utils/generator';
 import { attackTime, callKey, BETWEEN_BEEPS_MAX, MAX_CALLS } from '../utils/combo';
 import { roundPlan, presetToManual, manualToPreset, manualFromWait } from '../utils/intensity';
+import {
+  structureSummary,
+  beepsSummary,
+  focusSummary,
+  intensitySummary,
+  feedbackSummary,
+} from '../utils/summary';
 
 // Every setup setting, saved on the device so the screen opens as the user left it.
 const CONFIG_KEY = 'setupConfig';
@@ -58,6 +66,7 @@ const DEFAULT_CONFIG = {
   flashEnabled: true,
   flashStyle: 'Soft',
   vibrationEnabled: true,
+  collapsed: {},               // sections shown as their one-line summary
 };
 
 const TOOLTIPS = {
@@ -106,8 +115,9 @@ export default function SetupScreen({ navigation }) {
         tipsSeenRef.current = new Set(JSON.parse(await AsyncStorage.getItem(TIPS_SEEN_KEY)) ?? []);
       } catch {}
       if (!tourSeen) {
-        setTour({ path: 'Simple', index: 0, restoreBeepsOff: !initial.randomBeeps });
+        setTour({ path: 'Simple', index: 0, restoreBeepsOff: !initial.randomBeeps, restoreCollapsed: initial.collapsed });
         initial.randomBeeps = true;
+        initial.collapsed = {};
         AsyncStorage.setItem(TOUR_SEEN_KEY, '1').catch(() => {});
       }
       setConfig(initial);
@@ -173,14 +183,16 @@ export default function SetupScreen({ navigation }) {
 
 
   // ── Tour ──────────────────────────────────────────────────
+  // The tour opens every section, and puts them back as they were after.
   const startTour = () => {
     setTip(null);
-    setTour({ path: 'Simple', index: 0, restoreBeepsOff: !config.randomBeeps });
-    if (!config.randomBeeps) update({ randomBeeps: true });
+    setTour({ path: 'Simple', index: 0, restoreBeepsOff: !config.randomBeeps, restoreCollapsed: config.collapsed });
+    update({ randomBeeps: true, collapsed: {} });
   };
 
   const endTour = () => {
     if (tour?.restoreBeepsOff) update({ randomBeeps: false });
+    if (tour?.restoreCollapsed) update({ collapsed: tour.restoreCollapsed });
     setTour(null);
     setSpot(null);
     scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -257,8 +269,9 @@ export default function SetupScreen({ navigation }) {
     });
   };
 
-  const { restFirst } = config;
+  const { restFirst, collapsed } = config;
   const setField = (key) => (value) => update({ [key]: value });
+  const toggleSection = (key) => update(c => ({ collapsed: { ...c.collapsed, [key]: !c.collapsed[key] } }));
 
   return (
     <View ref={containerRef} onLayout={(e) => setFrame(e.nativeEvent.layout)} style={[styles.container, { paddingTop: insets.top }]}>
@@ -279,80 +292,94 @@ export default function SetupScreen({ navigation }) {
           <Text style={styles.howItWorksText}>How it works</Text>
         </TouchableOpacity>
 
-        {/* ── Section 1: Round Structure ─────────────────────── */}
-        <Text maxFontSizeMultiplier={3} style={styles.sectionLabel}>Round Structure</Text>
-        <View style={styles.card} ref={target('structure')} collapsable={false}>
+        {/* ── Round structure ───────────────────────────────────── */}
+        <Section
+          level={1}
+          title="Round structure"
+          summary={structureSummary(config)}
+          collapsed={collapsed.structure}
+          onToggle={() => toggleSection('structure')}
+          boxRef={target('structure')}
+        >
+          <View style={styles.card}>
 
-          {/* Warmup */}
-          <View style={styles.secondaryRow}>
-            <Text maxFontSizeMultiplier={2.5} style={styles.secondaryLabel}>Warm Up</Text>
-            <DurationPicker
-              label={''}
-              value={config.warmup}
-              onChange={setField('warmup')}
-              color={'#6B7280'}
-              variant={"peripheral"}
-            />
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Rounds + Work/Rest */}
-          <View style={styles.roundsRow}>
-            <View style={styles.roundsBlock}>
-              <Text maxFontSizeMultiplier={3} numberOfLines={1} style={styles.inputLabel}>Rounds</Text>
-              <RoundsPicker
-                value={config.rounds}
-                onChangeText={setField('rounds')}
+            {/* Warmup */}
+            <View style={styles.secondaryRow}>
+              <Text maxFontSizeMultiplier={2.5} style={styles.secondaryLabel}>Warm Up</Text>
+              <DurationPicker
+                label={''}
+                value={config.warmup}
+                onChange={setField('warmup')}
+                color={'#6B7280'}
+                variant={"peripheral"}
               />
             </View>
 
-            {/* Work ↔ Rest horizontal layout */}
-            <View style={styles.workRestRow}>
-              {restFirst ? (
-                <DurationPicker label="Rest" value={config.restDuration} onChange={setField('restDuration')} color="#22C55E" />
-              ) : (
-                <DurationPicker label="Work" value={config.workDuration} onChange={setField('workDuration')} color="#EF4444" />
-              )}
-              <TouchableOpacity style={styles.swapButton} onPress={() => update({ restFirst: !restFirst })}>
-                <Text maxFontSizeMultiplier={2} style={styles.swapIcon}>↔</Text>
-              </TouchableOpacity>
-              {restFirst ? (
-                <DurationPicker label="Work" value={config.workDuration} onChange={setField('workDuration')} color="#EF4444"
-                variant={"main"}/>
-              ) : (
-                <DurationPicker label="Rest" value={config.restDuration} onChange={setField('restDuration')} color="#22C55E"
-                variant={"main"}/>
-              )}
+            <View style={styles.divider} />
+
+            {/* Rounds + Work/Rest */}
+            <View style={styles.roundsRow}>
+              <View style={styles.roundsBlock}>
+                <Text maxFontSizeMultiplier={3} numberOfLines={1} style={styles.inputLabel}>Rounds</Text>
+                <RoundsPicker
+                  value={config.rounds}
+                  onChangeText={setField('rounds')}
+                />
+              </View>
+
+              {/* Work ↔ Rest horizontal layout */}
+              <View style={styles.workRestRow}>
+                {restFirst ? (
+                  <DurationPicker label="Rest" value={config.restDuration} onChange={setField('restDuration')} color="#22C55E" />
+                ) : (
+                  <DurationPicker label="Work" value={config.workDuration} onChange={setField('workDuration')} color="#EF4444" />
+                )}
+                <TouchableOpacity style={styles.swapButton} onPress={() => update({ restFirst: !restFirst })}>
+                  <Text maxFontSizeMultiplier={2} style={styles.swapIcon}>↔</Text>
+                </TouchableOpacity>
+                {restFirst ? (
+                  <DurationPicker label="Work" value={config.workDuration} onChange={setField('workDuration')} color="#EF4444"
+                  variant={"main"}/>
+                ) : (
+                  <DurationPicker label="Rest" value={config.restDuration} onChange={setField('restDuration')} color="#22C55E"
+                  variant={"main"}/>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Cooldown */}
+            <View style={styles.secondaryRow}>
+              <Text maxFontSizeMultiplier={2.5} style={styles.secondaryLabel}>Cool Down</Text>
+              <DurationPicker
+                value={config.cooldown}
+                onChange={setField('cooldown')}
+                color={'#6B7280'}
+                variant={"peripheral"}
+              />
             </View>
           </View>
+        </Section>
 
-          <View style={styles.divider} />
-
-          {/* Cooldown */}
-          <View style={styles.secondaryRow}>
-            <Text maxFontSizeMultiplier={2.5} style={styles.secondaryLabel}>Cool Down</Text>
-            <DurationPicker
-              value={config.cooldown}
-              onChange={setField('cooldown')}
-              color={'#6B7280'}
-              variant={"peripheral"}
-            />
-          </View>
-        </View>
-
-        {/* ── Section 2: Random Beeps ─────────────────────────── */}
-        <Text maxFontSizeMultiplier={3} style={styles.sectionLabel}>Random Beeps</Text>
-        <View style={styles.card} ref={target('beepsToggle')} collapsable={false}>
-          <View style={styles.beepsToggleRow}>
-            <Text style={styles.toggleLabel}>{randomBeeps ? 'On' : 'Off'}</Text>
+        {/* ── Random beeps: Focus, Intensity and Feedback ──────────── */}
+        <Section
+          level={1}
+          title="Random beeps"
+          summary={beepsSummary(config, work, attack)}
+          collapsed={collapsed.beeps}
+          onToggle={() => toggleSection('beeps')}
+          headerRef={target('beepsToggle')}
+          right={(
             <Switch
               value={randomBeeps}
               onValueChange={setField('randomBeeps')}
               accessibilityLabel="Random beeps"
             />
-          </View>
-          {!randomBeeps && (
+          )}
+        >
+          <View style={styles.beepsBody}>
+          {!randomBeeps ? (
             <View style={styles.offBlock}>
               <Text style={styles.offNote}>
                 A plain interval timer with no random beeps. You'll only hear beeps for rounds, rests and countdowns.
@@ -369,71 +396,80 @@ export default function SetupScreen({ navigation }) {
                 accessibilityLabel="Focus"
               />
             </View>
+          ) : (
+            <>
+              <Section
+                level={2}
+                title="Focus"
+                summary={focusSummary(config)}
+                collapsed={collapsed.focus}
+                onToggle={() => toggleSection('focus')}
+                boxRef={target('focus')}
+              >
+                <FocusSection
+                    calls={config.calls}
+                    onChangeCalls={setField('calls')}
+                    betweenBeeps={config.betweenBeeps}
+                    onChangeBetween={setField('betweenBeeps')}
+                    onHelp={setTooltipKey}
+                    onCallAdded={() => showTip('calls')}
+                    target={target}
+                  />
+              </Section>
+
+              <Section
+                level={2}
+                title="Intensity"
+                summary={intensitySummary(config, work, attack)}
+                collapsed={collapsed.intensity}
+                onToggle={() => toggleSection('intensity')}
+                boxRef={target('intensity')}
+              >
+                <IntensitySection
+                    config={config}
+                    update={update}
+                    rounds={rounds}
+                    work={work}
+                    attack={attack}
+                    onModeChange={changeMode}
+                    onTip={showTip}
+                    target={target}
+                  />
+              </Section>
+
+              {/* Flash and vibration only fire on the random beeps */}
+              <Section
+                level={2}
+                title="Feedback"
+                summary={feedbackSummary(config)}
+                collapsed={collapsed.feedback}
+                onToggle={() => toggleSection('feedback')}
+              >
+                <View style={styles.feedbackBody}>
+                  <View style={styles.toggleRow}>
+                    <Text style={styles.toggleLabel}>Screen flash</Text>
+                    <Switch value={config.flashEnabled} onValueChange={setField('flashEnabled')} />
+                  </View>
+                  {config.flashEnabled && (
+                    <View style={styles.flashStyleRow}>
+                      <Segments labels={FLASH_STYLES} value={config.flashStyle} onChange={setField('flashStyle')} />
+                    </View>
+                  )}
+                  <View style={[styles.toggleRow, styles.toggleRowDivided]}>
+                    <Text style={styles.toggleLabel}>Vibration</Text>
+                    <Switch value={config.vibrationEnabled} onValueChange={setField('vibrationEnabled')} />
+                  </View>
+                </View>
+              </Section>
+            </>
           )}
-        </View>
-
-        {randomBeeps && (
-          <>
-            <Text maxFontSizeMultiplier={3} style={styles.sectionLabel}>Focus</Text>
-            <View ref={target('focus')} collapsable={false}>
-              <FocusSection
-                calls={config.calls}
-                onChangeCalls={setField('calls')}
-                betweenBeeps={config.betweenBeeps}
-                onChangeBetween={setField('betweenBeeps')}
-                onHelp={setTooltipKey}
-                onCallAdded={() => showTip('calls')}
-                target={target}
-              />
-            </View>
-
-            <Text maxFontSizeMultiplier={3} style={styles.sectionLabel}>Intensity</Text>
-            <View ref={target('intensity')} collapsable={false}>
-              <IntensitySection
-                config={config}
-                update={update}
-                rounds={rounds}
-                work={work}
-                attack={attack}
-                onModeChange={changeMode}
-                onTip={showTip}
-                target={target}
-              />
-            </View>
-          </>
-        )}
-
-        {/* ── Section 3: Feedback ─────────────────────────────── */}
-        {/* Flash and vibration only fire on the random beeps, so they grey out without them */}
-        <Text maxFontSizeMultiplier={3} style={styles.sectionLabel}>Feedback</Text>
-        <View style={[styles.card, !randomBeeps && styles.disabled]}>
-          <View style={[styles.toggleRow, styles.toggleRowFirst]}>
-            <Text style={styles.toggleLabel}>Screen Flash</Text>
-            <Switch
-              value={config.flashEnabled}
-              onValueChange={setField('flashEnabled')}
-              disabled={!randomBeeps}
-            />
           </View>
-          {config.flashEnabled && randomBeeps && (
-            <View style={styles.flashStyleRow}>
-              <Segments labels={FLASH_STYLES} value={config.flashStyle} onChange={setField('flashStyle')} />
-            </View>
-          )}
-          <View style={styles.toggleRow}>
-            <Text style={styles.toggleLabel}>Vibration</Text>
-            <Switch
-              value={config.vibrationEnabled}
-              onValueChange={setField('vibrationEnabled')}
-              disabled={!randomBeeps}
-            />
-          </View>
-        </View>
+        </Section>
 
-        {/* ── Start ─────────────────────────────────────────── */}
+        {/* ── Enter: the same pill as GET READY and BEGIN ───────────── */}
         <View ref={target('start')} collapsable={false} style={styles.startWrap}>
-          <TouchableOpacity style={styles.startButton} onPress={handleStart}>
-            <Text style={styles.startButtonText}>ENTER</Text>
+          <TouchableOpacity style={styles.startButton} onPress={handleStart} accessibilityRole="button">
+            <Text maxFontSizeMultiplier={2} style={styles.startButtonText}>ENTER</Text>
           </TouchableOpacity>
         </View>
         <Modal visible={tooltipKey !== null} transparent animationType="fade">
@@ -535,6 +571,40 @@ function DurationPicker({ label, color, value, onChange, variant }) {
   );
 }
 
+// A collapsible section in its own box, heading at the top: tapping the
+// heading swaps the body for a one-line summary. Level 1 is Round structure
+// and Random beeps; level 2 (Focus, Intensity, Feedback) sits inside Random beeps.
+function Section({ level, title, summary, collapsed, onToggle, right, headerRef, boxRef, children }) {
+  const top = level === 1;
+  return (
+    <View ref={boxRef} collapsable={false} style={top ? styles.section : styles.subsection}>
+      <View
+        ref={headerRef}
+        collapsable={false}
+        style={[styles.sectionHeader, top ? styles.sectionHeaderTop : styles.subsectionHeader]}
+      >
+        <TouchableOpacity
+          style={styles.sectionTitleTouch}
+          onPress={onToggle}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: !collapsed }}
+          accessibilityHint={collapsed ? 'Shows the section' : 'Shows a summary'}
+        >
+          <View style={styles.sectionTitleRow}>
+            <Text maxFontSizeMultiplier={2} style={top ? styles.sectionTitle : styles.subsectionTitle}>{title}</Text>
+            <Chevron direction={collapsed ? 'down' : 'up'} size={top ? 14 : 12} color="#9CA3AF" />
+          </View>
+          {collapsed && (
+            <Text numberOfLines={1} maxFontSizeMultiplier={2} style={styles.summary}>{summary}</Text>
+          )}
+        </TouchableOpacity>
+        {right}
+      </View>
+      {!collapsed && children}
+    </View>
+  );
+}
+
 function RoundsPicker({ value, onChangeText }) {
   const [isOpen, setIsOpen] = useState(false);
   const insets = useSafeAreaInsets();
@@ -583,16 +653,75 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#6B7280',
   },
-  sectionLabel: {
-    fontSize: 13,
+  // Sections
+  section: {
+    marginTop: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  subsection: {
+    backgroundColor: FACE_COLOR,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  sectionHeaderTop: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  subsectionHeader: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  beepsBody: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    gap: 12,
+  },
+  sectionTitleTouch: {
+    flex: 1,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  // Each heading is larger than everything in its body: section 18, box 16,
+  // label 15, body text 14. Semibold and soft greys keep them from shouting.
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#4B5563',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  subsectionTitle: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#6B7280',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    marginTop: 20,
-    marginBottom: 8,
-    marginLeft: 4,
   },
+  summary: {
+    marginTop: 3,
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  textLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  offBlock: {
+    paddingHorizontal: 4,
+    gap: 8,
+  },
+
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -636,8 +765,8 @@ const styles = StyleSheet.create({
     flex: 0,
   },
   roundsDisplay: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '300',
     color: '#111827',
     textAlign: 'center',
     paddingVertical: 4,
@@ -688,33 +817,10 @@ const styles = StyleSheet.create({
   },
 
   // Random Beeps
-  beepsToggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  offBlock: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 16,
-    gap: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
   offNote: {
-    paddingTop: 12,
     paddingBottom: 8,
-    fontSize: 15,
-    color: '#374151',
-  },
-  textLabel: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: '#374151',
   },
   textBox: {
     borderWidth: 1,
@@ -722,7 +828,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 15,
+    fontSize: 14,
     color: '#111827',
     backgroundColor: '#FFFFFF',
   },
@@ -734,14 +840,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
+  },
+  feedbackBody: {
+    paddingBottom: 4,
+  },
+  toggleRowDivided: {
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
   },
-  toggleRowFirst: {
-    borderTopWidth: 0,
-  },
   toggleLabel: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#374151',
   },
   flashStyleRow: {
@@ -752,27 +860,29 @@ const styles = StyleSheet.create({
 
   // Start button
   startWrap: {
-    marginTop: 32,
+    marginTop: 36,
   },
   startButton: {
-    backgroundColor: '#111827',
-    borderRadius: 14,
-    paddingVertical: 18,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 2,
+    borderColor: '#111827',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   startButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: 2,
+    color: '#111827',
+    fontSize: 20,
+    fontWeight: '400',
+    letterSpacing: 3,
   },
 
   peripheralValue: {
     flex: 1,
   },
   durationDisplay: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '300',
     color: '#111827',
     paddingVertical: 4,
     textAlign: 'right',

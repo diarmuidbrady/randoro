@@ -8,7 +8,6 @@ export const TOUR_SEEN_KEY = 'setupTourSeen';
 export const TIPS_SEEN_KEY = 'tipsSeen';
 
 export const TOUR_PATHS = ['Simple', 'Advanced'];
-const PATH_COLORS = { Simple: '#FFFFFF', Advanced: '#FFFFFF' };
 
 // The main steps, each with a detail branch the Advanced path also visits.
 // A target is the key a section registers with SetupScreen's target(); a list
@@ -30,14 +29,14 @@ const MAIN_STEPS = [
       { target: 'comboSide', caption: 'Tap here to change the combo length: 1–2, 3–4 or 5–6+ punches.' },
       { target: 'comboSide', caption: 'Hold it to type your own combo, like jab, cross, slip.' },
       { target: ['addCall', 'calls'], caption: 'Tap + to add calls A, B and C, each with its own voice and combo.' },
-      { target: 'betweenBeeps', caption: 'Between beeps is what you work on while you wait. It shows under the timer.' },
+      { target: 'betweenBeeps', caption: 'Between calls is what you work on while you wait. It shows under the timer.' },
     ],
   },
   {
     target: 'intensity',
     caption: 'This is how hard: Low, Medium or High sets how often the beeps come.',
     detail: [
-      { target: 'intensityTabs', caption: 'Manual sets the Avg. wait or the Beeps per round instead.' },
+      { target: 'intensityTabs', caption: 'Manual sets the Avg. wait or the Calls per round instead.' },
       { target: 'advanced', caption: 'Advanced sets the intensity per round, or for each third of a round.' },
     ],
   },
@@ -69,7 +68,7 @@ export const TIPS = {
   },
   manual: {
     target: 'intensity',
-    caption: 'Set the Avg. wait or the Beeps per round: change one and the other follows. Advanced has per-round and within-round intensity.',
+    caption: 'Set the Avg. wait or the Calls per round: change one and the other follows. Advanced has per-round and within-round intensity.',
   },
   advanced: {
     target: 'advanced',
@@ -154,7 +153,7 @@ export function TourControls({ path, onPath, index, count, onBack, onSkip, onNex
   return (
     <View style={styles.controls}>
       <View style={styles.pathRow}>
-        <Segments labels={TOUR_PATHS} value={path} onChange={onPath} colors={PATH_COLORS} textColor="#111827" />
+        <Segments labels={TOUR_PATHS} value={path} onChange={onPath} dark />
       </View>
       <View style={styles.buttonRow}>
         {last ? <View /> : (

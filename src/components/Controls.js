@@ -1,8 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, PixelRatio } from 'react-native';
+import Svg, { Rect } from 'react-native-svg';
+import { UNSELECTED_FILL } from '../constants/theme';
 
+const SEGMENT_RADIUS = 10;
+const SEGMENT_BORDER = 1.5;
+export const SELECTED_COLOR = '#111827';
 const TAB_STRIP_COLOR = '#E5E7EB';
 const TAB_RADIUS = 10;
+
+// Edge glow: colour runs in from the border, parallel to it, and fades to clear.
+const GLOW_DEPTH = 0.3;      // how far in it reaches, as a share of the shorter side...
+const GLOW_DEPTH_MAX = 14;   // ...up to this many points
+const GLOW_OPACITY = 0.25;   // at the edge; the colour keeps its hue and only fades
+const HAIRLINE = 1 / PixelRatio.get(); // one ring per device pixel, so the fade is smooth
 
 const REPEAT_DELAY_MS = 400;  // hold this long before a stepper starts repeating
 const REPEAT_START_MS = 150;  // first repeat interval...
@@ -105,35 +116,73 @@ export function Stepper({ value, display, onStep, min, max, parse, onType, acces
   );
 }
 
-// A row of buttons, one chosen. `colors` fills the chosen one per label.
-export function Segments({ labels, value, onChange, colors, textColor }) {
+// A soft glow inside a rounded box, running parallel to its border. Drawn as
+// rings stepping in a pixel at a time, each fainter, so it follows the corners.
+// Each ring is two pixels wide and half strength, so neighbours overlap and no
+// seams show at the corners.
+// `radius` is the box's inner corner radius. Sized from its layout, since
+// percentage sizes don't fill the parent reliably.
+export function EdgeGlow({ color, radius = SEGMENT_RADIUS - SEGMENT_BORDER, opacity = GLOW_OPACITY, maxDepth = GLOW_DEPTH_MAX }) {
+  const [size, setSize] = useState(null);
+  const depth = size ? Math.min(maxDepth, Math.min(size.width, size.height) * GLOW_DEPTH) : 0;
+  const rings = Math.round(depth / HAIRLINE);
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none" onLayout={(e) => setSize(e.nativeEvent.layout)}>
+      {size && (
+        <Svg width={size.width} height={size.height}>
+          {Array.from({ length: rings }, (_, i) => {
+            const inset = (i + 0.5) * HAIRLINE;
+            const fade = 1 - i / rings;
+            return (
+              <Rect
+                key={i}
+                x={inset}
+                y={inset}
+                width={Math.max(0, size.width - 2 * inset)}
+                height={Math.max(0, size.height - 2 * inset)}
+                rx={Math.max(0, radius - inset)}
+                fill="none"
+                stroke={color}
+                strokeWidth={HAIRLINE * 2}
+                strokeOpacity={(opacity * fade * fade) / 2}
+              />
+            );
+          })}
+        </Svg>
+      )}
+    </View>
+  );
+}
+
+// A row of buttons, one chosen. The others sit in a light charcoal fill and
+// the chosen one turns white. A label given a colour in `colors` also takes a
+// border and edge glow in it. `dark` is for dark cards.
+export function Segments({ labels, value, onChange, colors, dark, renderLabel = String }) {
   return (
     <View style={styles.segmentRow}>
       {labels.map(label => {
         const active = value === label;
-        const fill = active && colors?.[label];
+        const color = colors?.[label];
         return (
           <TouchableOpacity
             key={label}
             style={[
               styles.segmentButton,
+              dark && styles.segmentButtonDark,
               active && styles.segmentButtonActive,
-              fill && { backgroundColor: fill, borderColor: fill },
+              active && color && { borderColor: color },
             ]}
             onPress={() => onChange(label)}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
           >
+            {active && color && <EdgeGlow color={color} />}
             <Text
               numberOfLines={1}
               maxFontSizeMultiplier={2.5}
-              style={[
-                styles.segmentButtonText,
-                active && styles.segmentButtonTextActive,
-                fill && textColor && { color: textColor },
-              ]}
+              style={[styles.segmentText, dark && styles.segmentTextDark, active && styles.segmentTextActive]}
             >
-              {label}
+              {renderLabel(label)}
             </Text>
           </TouchableOpacity>
         );
@@ -144,9 +193,10 @@ export function Segments({ labels, value, onChange, colors, textColor }) {
 
 // Browser-style tabs: the chosen tab is the card's colour and runs into the
 // body below, with curved corners where it meets the body.
-export function Tabs({ labels, value, onChange }) {
+// `inset` keeps the tabs in from the strip's ends, e.g. clear of the body's rounded corners.
+export function Tabs({ labels, value, onChange, stripColor = TAB_STRIP_COLOR, activeColor = '#FFFFFF', inset = TAB_RADIUS }) {
   return (
-    <View style={styles.tabStrip} accessibilityRole="tablist">
+    <View style={[styles.tabStrip, { backgroundColor: stripColor, paddingHorizontal: inset }]} accessibilityRole="tablist">
       {labels.map((label, i) => {
         const active = value === label;
         // Dividers only sit between two unchosen tabs.
@@ -155,7 +205,7 @@ export function Tabs({ labels, value, onChange }) {
           <React.Fragment key={label}>
             {i > 0 && <View style={[styles.tabDivider, !divider && styles.tabDividerHidden]} />}
             <TouchableOpacity
-              style={[styles.tab, active && styles.tabActive]}
+              style={[styles.tab, active && { backgroundColor: activeColor }]}
               onPress={() => onChange(label)}
               activeOpacity={active ? 1 : 0.6}
               accessibilityRole="tab"
@@ -163,11 +213,11 @@ export function Tabs({ labels, value, onChange }) {
             >
               {active && (
                 <>
-                  <View style={[styles.tabFlare, styles.tabFlareLeft]}>
-                    <View style={[styles.tabFlareCut, styles.tabFlareCutLeft]} />
+                  <View style={[styles.tabFlare, styles.tabFlareLeft, { backgroundColor: activeColor }]}>
+                    <View style={[styles.tabFlareCut, styles.tabFlareCutLeft, { backgroundColor: stripColor }]} />
                   </View>
-                  <View style={[styles.tabFlare, styles.tabFlareRight]}>
-                    <View style={[styles.tabFlareCut, styles.tabFlareCutRight]} />
+                  <View style={[styles.tabFlare, styles.tabFlareRight, { backgroundColor: activeColor }]}>
+                    <View style={[styles.tabFlareCut, styles.tabFlareCutRight, { backgroundColor: stripColor }]} />
                   </View>
                 </>
               )}
@@ -182,23 +232,6 @@ export function Tabs({ labels, value, onChange }) {
           </React.Fragment>
         );
       })}
-    </View>
-  );
-}
-
-// A heading with an optional help button above its controls.
-export function Field({ title, onHelp, children, style }) {
-  return (
-    <View style={[styles.field, style]}>
-      <View style={styles.fieldHeader}>
-        <Text style={styles.fieldHeading}>{title}</Text>
-        {onHelp && (
-          <TouchableOpacity onPress={onHelp} accessibilityRole="button" accessibilityLabel={`About ${title}`}>
-            <Text style={styles.helpTrigger}>?</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-      {children}
     </View>
   );
 }
@@ -218,7 +251,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -236,8 +271,8 @@ const styles = StyleSheet.create({
     minWidth: 64,
     paddingVertical: 4,
     paddingHorizontal: 4,
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '300',
     color: '#111827',
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
@@ -252,32 +287,39 @@ const styles = StyleSheet.create({
   segmentRow: {
     flex: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     gap: 6,
     minWidth: 180,
   },
   segmentButton: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 'auto',
+    flex: 1,
     paddingVertical: 11,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: '#D1D5DB',
+    paddingHorizontal: 6,
+    borderRadius: SEGMENT_RADIUS,
+    borderWidth: SEGMENT_BORDER,
+    borderColor: 'transparent',
+    backgroundColor: UNSELECTED_FILL,
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  segmentButtonDark: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   segmentButtonActive: {
-    borderColor: '#111827',
-    backgroundColor: '#111827',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D1D5DB',
   },
-  segmentButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
+  segmentText: {
+    fontSize: 13,
+    fontWeight: '500',
     color: '#6B7280',
     textAlign: 'center',
   },
-  segmentButtonTextActive: {
-    color: '#FFFFFF',
+  segmentTextDark: {
+    color: '#9CA3AF',
+  },
+  segmentTextActive: {
+    fontWeight: '600',
+    color: SELECTED_COLOR,
   },
 
   // Tabs
@@ -296,9 +338,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderTopLeftRadius: TAB_RADIUS,
     borderTopRightRadius: TAB_RADIUS,
-  },
-  tabActive: {
-    backgroundColor: '#FFFFFF',
   },
   tabText: {
     fontSize: 14,
@@ -340,29 +379,5 @@ const styles = StyleSheet.create({
   },
   tabFlareCutRight: {
     borderBottomLeftRadius: TAB_RADIUS,
-  },
-
-  // Field
-  field: {
-    gap: 10,
-  },
-  fieldHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  fieldHeading: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    flexShrink: 1,
-  },
-  helpTrigger: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#9CA3AF',
-    paddingHorizontal: 6,
-    paddingVertical: 4,
   },
 });

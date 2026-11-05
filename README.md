@@ -8,19 +8,21 @@ A boxing interval timer that fires random audio cues so you have to react to the
 **Setup** — configure your session before starting:
 
 - **Round Structure** — set warm-up, number of rounds, work duration, rest duration, and cool-down. Tap any duration to open a scroll wheel. The swap button (↔) flips whether work or rest comes first.
-- **Random Beeps** — on or off. Off makes a plain interval timer, with an optional *Focus* text shown under the timer in work rounds.
-- **Focus** (beeps on) — the calls: what you throw on each beep. One call is *Classic*; tap **+** to make it *A* and add *B*, then *C* (each a voice call with its own shape). Tap a call's combo to cycle 1–2, 3–4 and 5–6+ punches; hold it to type your own (e.g. `jab, cross, slip`, split on commas and dashes) or pick one from a list. Each move gets the same time (`MOVE_SECONDS` in `src/utils/combo.js`), so a call's attack time comes from its combo. Swipe a call left to remove it. *Between beeps* is optional text shown under the timer while you wait.
-- **Intensity** (beeps on) — how often the beeps come. *Preset*: Low, Medium or High. *Manual*: *Avg. wait* or *Beeps per round*; change one and the other follows. *Advanced* sets it *Per round* (Preset: a chip per round, with Competition, Build up and Pyramid patterns; Manual: a table) or *Within round* (a bar split into thirds, the same in every round).
-- **Feedback** — toggle screen flash and vibration on each cue. The flash is *Soft* (default, the red fades to pink and back), *Sharp* (red snaps to white) or *Minimal* (only the timer pulses; the default when Reduce Motion is on). Greyed out without random beeps.
+Setup has two sections, **Round structure** and **Random beeps**; Focus, Intensity and Feedback sit inside Random beeps. Tap any heading to collapse it to a one-line summary.
 
-Every setting is saved on the device. **How it works** replays the coach-mark tour that runs on first launch (a *Simple* and an *Advanced* path), and the first time you open some features a one-off tip explains them.
+- **Random beeps** — on or off. Off makes a plain interval timer, with an optional *Focus* text shown under the timer in work rounds.
+- **Focus** (beeps on) — *On the call*: what you throw on each beep. One call is *Classic*; tap **+** to make it *A* and add *B*, then *C* (each a voice call with its own shape). Tap a call's combo to cycle 1–2, 3–4 and 5–6+ punches; hold it to type your own (e.g. `jab, cross, slip`, split on commas and dashes) or pick one from a list. Each move gets the same time (`MOVE_SECONDS` in `src/utils/combo.js`), so a call's attack time comes from its combo. Swipe a call left to remove it. *Between calls* is optional text shown under the timer while you wait.
+- **Intensity** (beeps on) — how often the beeps come. *Preset*: Low, Medium or High. *Manual*: *Avg. wait* or *Calls per round*; change one and the other follows. *Advanced* sets it *Per round* (Preset: a chip per round, with Competition, Build up and Pyramid patterns; Manual: a table) or *Within round* (a bar split into thirds, the same in every round).
+- **Feedback** (beeps on) — toggle screen flash and vibration on each cue. The flash is *Soft* (default, the red fades to pink and back), *Sharp* (red snaps to white) or *Minimal* (only the timer pulses; the default when Reduce Motion is on).
+
+Every setting, including which sections are collapsed, is saved on the device. **How it works** replays the coach-mark tour that runs on first launch (a *Simple* and an *Advanced* path), and the first time you open some features a one-off tip explains them.
 
 Tap **ENTER** to continue.
 
-**Running** — the screen shows the current phase (warm-up, work, rest, cool-down), a large countdown, and elapsed/remaining time. In a work round it also shows how many of the round's beeps have played, e.g. "2 of 3 beeps", and the Between beeps (or Focus) text under the timer. Audio cues fire at random intervals within the bounds you set. On each cue:
+**Running** — the screen shows the current phase (warm-up, work, rest, cool-down), a large countdown, and elapsed/remaining time. In a work round it also shows how many of the round's beeps have played, e.g. "2 of 3 calls", and the Between calls (or Focus) text under the timer. Audio cues fire at random intervals within the bounds you set. On each cue:
 - The call's sound plays: the Classic beep, or the voice calling A, B or C
 - The timer shrinks to the top and the call shows in the middle (the Randoro trace for Classic, or A's triangle, B's square or C's circle, with its combo) for the call's attack time
-- The screen flashes (if enabled), and stays pink (Soft) or white (Sharp) while the call shows
+- The screen flashes (if enabled), and stays light pink (Soft, with red text) or white (Sharp) while the call shows
 - The phone vibrates (if enabled)
 
 Before each work round, a long low beep gives a 10-second warning, then three long beeps count 3-2-1 into the round-start beep.
@@ -156,12 +158,13 @@ src/
     IntensitySection.js  Preset / Manual, per-round and within-round intensity
     CoachMarks.js      Spotlight overlay, tour steps and first-time tips
     CallShape.js       Call shapes, the Randoro trace, small icons
-    Controls.js        Tabs, segments, steppers
+    Controls.js        Segments, edge glow, steppers
     WheelPicker.js     Scroll wheel for durations and rounds (iOS and Android)
   utils/
     generator.js       Builds the workout event timeline
     combo.js           Combo parsing and attack time
     intensity.js       Levels, patterns, Manual linking, per-round plans
+    summary.js         One-line summaries of collapsed setup sections
     time.js            Time formatting / parsing
   constants/
     theme.js           Colors, intensity levels, call shapes

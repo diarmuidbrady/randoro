@@ -196,7 +196,7 @@ export default function RunningScreen({ route, navigation }) {
   const showCall = useCallback((event) => {
     clearTimeout(callTimerRef.current);
     setCall(event);
-    if (sharpFlash) setIsFlashing(true);
+    setIsFlashing(true);
     if (flashEnabled && flashStyle === 'Minimal') {
       const half = FADE_DURATION_MS / 2;
       Animated.sequence([
@@ -358,8 +358,11 @@ export default function RunningScreen({ route, navigation }) {
   const handleNextPhase = () => jumpToPhaseIndex(currentPhaseIndex + 1);
 
   // ── Colours: invert on a Sharp flash ──────────────────────
-  const bgColor = isFlashing ? phaseColors.text : phaseColors.background;
-  const fgColor = isFlashing ? phaseColors.background : phaseColors.text;
+  // isFlashing is true while a call is lit. Sharp swaps the colours then;
+  // Soft's pink is too light for white text, so only the text turns red.
+  const softLit = isFlashing && flashEnabled && flashStyle === 'Soft';
+  const bgColor = isFlashing && sharpFlash ? phaseColors.text : phaseColors.background;
+  const fgColor = (isFlashing && sharpFlash) || softLit ? phaseColors.background : phaseColors.text;
   const timerOpacity = flashEnabled && flashStyle === 'Minimal'
     ? flashAnim.interpolate({ inputRange: [0, 1], outputRange: [1, MINIMAL_PULSE_OPACITY] })
     : 1;
@@ -413,7 +416,7 @@ export default function RunningScreen({ route, navigation }) {
               {formatTime(phaseRemaining)}
             </Text>
           </Animated.View>
-          {/* Between beeps (or Focus without beeps) shows in work rounds while
+          {/* Between calls (or Focus without beeps) shows in work rounds while
               no call is on screen. It keeps its space in other phases so the
               timer doesn't jump. */}
           {focusText.length > 0 && (
@@ -464,7 +467,7 @@ export default function RunningScreen({ route, navigation }) {
                 </Text>
                 {roundPingTimes.length > 0 && (
                   <Text style={[styles.beepCountText, { color: fgColor }]}>
-                    {roundPingsFired} of {roundPingTimes.length} {roundPingTimes.length === 1 ? 'beep' : 'beeps'}
+                    {roundPingsFired} of {roundPingTimes.length} {roundPingTimes.length === 1 ? 'call' : 'calls'}
                   </Text>
                 )}
               </>

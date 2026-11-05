@@ -10,7 +10,7 @@ export const PHASE_COLORS = {
 // Screen Flash styles on a beep. Soft fades the work red to pink and back,
 // Sharp swaps the background and text colours, Minimal only pulses the timer.
 export const FLASH_STYLES = ['Soft', 'Sharp', 'Minimal'];
-export const SOFT_FLASH_COLOR = '#FCA5A5';
+export const SOFT_FLASH_COLOR = '#FECACA';
 
 // Intensity levels. Each sets the average wait in seconds, the random part of
 // each gap between beeps, on top of the call's attack time. The colour always
@@ -26,3 +26,8 @@ export const LEVEL_TEXT_COLOR = '#111827';
 // Calls A, B and C each have a shape, on the setup screen and the run screen.
 export const CALL_SHAPES = { a: 'triangle', b: 'square', c: 'circle' };
 export const CALL_RED = '#EF4444';
+
+// Setup surfaces: the boxes inside Random beeps sit on a light grey face, and
+// unchosen buttons on a light charcoal fill.
+export const FACE_COLOR = '#F4F5F7';
+export const UNSELECTED_FILL = '#E6E8EC';

@@ -32,7 +32,7 @@ export const newCall = () => ({
 
 const DELETE_WIDTH = 88;
 
-// The calls the user throws on each beep, and what they work on between beeps.
+// The calls the user throws on each beep, and what they work on between calls.
 export default function FocusSection({ calls, onChangeCalls, betweenBeeps, onChangeBetween, onHelp, onCallAdded, target }) {
   const [editing, setEditing] = useState(null); // id of the call whose combo is open
 
@@ -71,6 +71,7 @@ export default function FocusSection({ calls, onChangeCalls, betweenBeeps, onCha
   return (
     <View style={styles.card}>
       <View style={styles.rows} ref={target('calls')} collapsable={false}>
+        <Text style={[styles.textLabel, styles.rowsLabel]}>On the call</Text>
         {calls.map((call, i) => (
           <CallRow
             key={call.id}
@@ -104,7 +105,7 @@ export default function FocusSection({ calls, onChangeCalls, betweenBeeps, onCha
       <View style={styles.divider} />
 
       <View style={styles.betweenBlock} ref={target('betweenBeeps')} collapsable={false}>
-        <Text style={styles.textLabel}>Between beeps</Text>
+        <Text style={styles.textLabel}>Between calls</Text>
         <TextInput
           style={styles.textBox}
           value={betweenBeeps}
@@ -113,7 +114,7 @@ export default function FocusSection({ calls, onChangeCalls, betweenBeeps, onCha
           placeholderTextColor="#9CA3AF"
           maxLength={BETWEEN_BEEPS_MAX}
           returnKeyType="done"
-          accessibilityLabel="Between beeps"
+          accessibilityLabel="Between calls"
         />
       </View>
 
@@ -304,19 +305,18 @@ function ComboEditor({ call, label, onSave }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
     overflow: 'hidden',
   },
   rows: {
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
     gap: 8,
   },
   swipeContainer: {
     borderRadius: 12,
   },
   row: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
@@ -335,8 +335,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   classicLabel: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
     color: '#111827',
   },
   speaker: {
@@ -359,12 +359,12 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 12,
   },
   pressed: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F4F5F7',
   },
   comboText: {
     flexShrink: 1,
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '400',
     color: '#111827',
   },
   infoButton: {
@@ -422,12 +422,14 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 8,
   },
+  // Larger than the call rows and typed text under it (14).
   textLabel: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: '#374151',
+  },
+  rowsLabel: {
+    paddingLeft: 4,
   },
   textBox: {
     borderWidth: 1,
@@ -435,7 +437,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 15,
+    fontSize: 14,
     color: '#111827',
     backgroundColor: '#FFFFFF',
   },
@@ -490,11 +492,9 @@ const styles = StyleSheet.create({
     maxHeight: '80%',
   },
   editorTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
     color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   editorInput: {
     borderWidth: 1.5,

@@ -1,9 +1,11 @@
-import React, { useId, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
-import { Tabs, Segments, Stepper, RepeatButton } from './Controls';
+import { Tabs, Segments, Stepper, RepeatButton, EdgeGlow } from './Controls';
+import Svg, { Path } from 'react-native-svg';
 import { Chevron, VerticalRule } from './CallShape';
-import { LEVELS, LEVEL_KEYS, LEVEL_TEXT_COLOR } from '../constants/theme';
+import { LEVELS, LEVEL_KEYS, LEVEL_TEXT_COLOR, FACE_COLOR, UNSELECTED_FILL } from '../constants/theme';
+
+const BODY_RADIUS = 12;
 import {
   PATTERNS,
   WAIT_MIN,
@@ -25,8 +27,14 @@ const MODES = ['Preset', 'Manual'];
 const SCOPES = { PerRound: 'Per round', WithinRound: 'Within round' };
 const SCOPE_BY_LABEL = { 'Per round': 'PerRound', 'Within round': 'WithinRound' };
 
-const GLOW_CLEAR = 0.3;    // the glow is clear out to this share of the way to the edge...
-const GLOW_OPACITY = 0.75; // ...and this strong at the edge
+const LEVEL_LABELS = LEVEL_KEYS.map(k => LEVELS[k].label);
+const LEVEL_COLORS = Object.fromEntries(LEVEL_KEYS.map(k => [LEVELS[k].label, LEVELS[k].color]));
+const keyForLabel = (label) => LEVEL_KEYS.find(k => LEVELS[k].label === label);
+
+// The thirds are wide, so their glow reaches further in and is stronger, to
+// read as clearly as the round chips.
+const THIRD_GLOW_OPACITY = 0.45;
+const THIRD_GLOW_DEPTH = 24;
 
 const CHIP_WIDTH = 52;
 const CHIP_GAP = 8;
@@ -53,14 +61,30 @@ export default function IntensitySection({ config, update, rounds, work, attack,
   };
 
   return (
-    <View style={styles.card}>
+    <View style={styles.panel}>
+      {/* Preset and Manual are branches, not options, so they're tabs: on the
+          box's grey face, the chosen tab is white and runs into a white body. */}
       <View ref={target('intensityTabs')} collapsable={false}>
-        <Tabs labels={MODES} value={config.intensityMode} onChange={onModeChange} />
+        <Tabs
+          labels={MODES}
+          value={config.intensityMode}
+          onChange={onModeChange}
+          stripColor={FACE_COLOR}
+          activeColor="#FFFFFF"
+          inset={BODY_RADIUS + 10}
+        />
       </View>
-
       <View style={styles.body}>
+
         {config.scope === 'All' && (preset ? (
-          <LevelButtons value={config.level} onChange={(level) => update({ level })} />
+          <View style={styles.row}>
+            <Segments
+              labels={LEVEL_LABELS}
+              value={LEVELS[config.level].label}
+              onChange={(label) => update({ level: keyForLabel(label) })}
+              colors={LEVEL_COLORS}
+            />
+          </View>
         ) : (
           <ManualRows
             entry={config.manual}
@@ -120,7 +144,7 @@ export default function IntensitySection({ config, update, rounds, work, attack,
   );
 }
 
-// ── Manual: Avg. wait or Beeps per round, linked ────────────
+// ── Manual: Avg. wait or Calls per round, linked ────────────
 function ManualRows({ entry, onChange, work, attack }) {
   const { wait, beeps, max } = resolveManual(entry, work, attack);
   return (
@@ -135,7 +159,7 @@ function ManualRows({ entry, onChange, work, attack }) {
         <View style={styles.orLine} />
       </View>
       <View style={styles.valueRow}>
-        <Text style={styles.valueLabel}>Beeps per round</Text>
+        <Text style={styles.valueLabel}>Calls per round</Text>
         <BeepsStepper beeps={beeps} max={max} onChange={(b) => onChange(manualFromBeeps(b))} />
       </View>
     </View>
@@ -170,7 +194,7 @@ function BeepsStepper({ beeps, max, onChange, compact }) {
       min={1}
       max={max}
       onStep={(dir) => onChange(Math.min(max, Math.max(1, beeps + dir)))}
-      accessibilityLabel="Beeps per round"
+      accessibilityLabel="Calls per round"
     />
   );
 }
@@ -180,9 +204,9 @@ function RoundTable({ entries, onChange, work, attack }) {
   return (
     <View>
       <View style={styles.tableHeader}>
-        <Text numberOfLines={1} style={[styles.tableHeading, styles.tableRound]}>Rd</Text>
+        <Text numberOfLines={1} style={[styles.tableHeading, styles.tableRound]}>Round</Text>
         <Text style={[styles.tableHeading, styles.tableCell]}>Avg. wait (s)</Text>
-        <Text style={[styles.tableHeading, styles.tableCell]}>Beeps</Text>
+        <Text style={[styles.tableHeading, styles.tableCell]}>Calls</Text>
       </View>
       <ScrollView style={styles.tableScroll} nestedScrollEnabled>
         {entries.map((entry, i) => {
@@ -250,7 +274,7 @@ function RoundChips({ levels, onChange }) {
             accessibilityLabel={`Round ${i + 1}: ${LEVELS[key].label}`}
             accessibilityHint="Changes this round's intensity"
           >
-            <Glow color={LEVELS[key].color} radius={8.5} />
+            <EdgeGlow color={LEVELS[key].color} radius={8.5} />
             <Text maxFontSizeMultiplier={1.5} style={styles.roundChipNumber}>{i + 1}</Text>
             <Text maxFontSizeMultiplier={1.5} style={styles.roundChipLevel}>{key}</Text>
           </TouchableOpacity>
@@ -270,7 +294,7 @@ function ThirdsBar({ preset, levels, waits, onChangeLevels, onChangeWaits }) {
           const key = preset ? levels[i] : nearestLevel(waits[i]);
           const divider = i > 0 && (
             <View style={styles.thirdDivider}>
-              <VerticalRule color="#FFFFFF" dash="0.1 6" width={3} round />
+              <VerticalRule color="#9CA3AF" dash="0.1 5" width={2} round />
             </View>
           );
           if (preset) {
@@ -278,13 +302,14 @@ function ThirdsBar({ preset, levels, waits, onChangeLevels, onChangeWaits }) {
               <React.Fragment key={i}>
                 {divider}
                 <TouchableOpacity
-                  style={styles.third}
+                  style={[styles.third, thirdEdge(i)]}
                   onPress={() => onChangeLevels(levels.map((k, j) => (j === i ? nextLevel(k) : k)))}
                   accessibilityRole="button"
                   accessibilityLabel={`${THIRD_NAMES[i]} of the round: ${LEVELS[key].label}`}
                   accessibilityHint="Changes its intensity"
                 >
-                  <Glow color={LEVELS[key].color} />
+                  <EdgeGlow color={LEVELS[key].color} radius={0} opacity={THIRD_GLOW_OPACITY} maxDepth={THIRD_GLOW_DEPTH} />
+                  <ThirdOutline color={LEVELS[key].color} index={i} />
                   <Text maxFontSizeMultiplier={1.5} style={styles.thirdLevel}>{key}</Text>
                 </TouchableOpacity>
               </React.Fragment>
@@ -294,7 +319,7 @@ function ThirdsBar({ preset, levels, waits, onChangeLevels, onChangeWaits }) {
             <React.Fragment key={i}>
               {divider}
               <View
-                style={[styles.third, styles.thirdManual]}
+                style={[styles.third, styles.thirdManual, thirdEdge(i)]}
                 accessible
                 accessibilityRole="adjustable"
                 accessibilityLabel={`${THIRD_NAMES[i]} of the round, average wait`}
@@ -302,7 +327,8 @@ function ThirdsBar({ preset, levels, waits, onChangeLevels, onChangeWaits }) {
                 accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
                 onAccessibilityAction={(e) => setWait(i, clampWait(waits[i] + (e.nativeEvent.actionName === 'increment' ? WAIT_STEP : -WAIT_STEP)))}
               >
-                <Glow color={LEVELS[key].color} />
+                <EdgeGlow color={LEVELS[key].color} radius={0} opacity={THIRD_GLOW_OPACITY} maxDepth={THIRD_GLOW_DEPTH} />
+                <ThirdOutline color={LEVELS[key].color} index={i} />
                 <RepeatButton
                   label={<Chevron direction="up" size={16} color={LEVEL_TEXT_COLOR} />}
                   accessibilityLabel="Longer wait"
@@ -329,105 +355,65 @@ function ThirdsBar({ preset, levels, waits, onChangeLevels, onChangeWaits }) {
 }
 
 const THIRD_NAMES = ['First third', 'Middle third', 'Last third'];
+const THIRD_RADIUS = 10;
+const THIRD_BORDER = 1.5;
 
-// The level's colour glows in from the edges and fades to clear in the middle.
-// It's sized from its layout: percentage sizes don't fill the parent reliably.
-function Glow({ color, radius = 0 }) {
-  const id = `glow${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+// The outer two thirds round off the bar's ends.
+function thirdEdge(i) {
+  const first = i === 0;
+  const last = i === THIRDS - 1;
+  return {
+    borderTopLeftRadius: first ? THIRD_RADIUS : 0,
+    borderBottomLeftRadius: first ? THIRD_RADIUS : 0,
+    borderTopRightRadius: last ? THIRD_RADIUS : 0,
+    borderBottomRightRadius: last ? THIRD_RADIUS : 0,
+  };
+}
+
+// Each third's edge in its own level's colour: top and bottom, plus the
+// rounded end on the outer two. Drawn in SVG, since iOS leaves gaps in
+// borders that differ by side on a view with rounded corners.
+function ThirdOutline({ color, index }) {
   const [size, setSize] = useState(null);
+  let d = '';
+  if (size) {
+    const { width: w, height: h } = size;
+    const o = THIRD_BORDER / 2;
+    const r = THIRD_RADIUS - o;
+    if (index === 0) {
+      d = `M ${w} ${o} H ${o + r} A ${r} ${r} 0 0 0 ${o} ${o + r} V ${h - o - r} A ${r} ${r} 0 0 0 ${o + r} ${h - o} H ${w}`;
+    } else if (index === THIRDS - 1) {
+      d = `M 0 ${o} H ${w - o - r} A ${r} ${r} 0 0 1 ${w - o} ${o + r} V ${h - o - r} A ${r} ${r} 0 0 1 ${w - o - r} ${h - o} H 0`;
+    } else {
+      d = `M 0 ${o} H ${w} M 0 ${h - o} H ${w}`;
+    }
+  }
   return (
-    <View
-      style={StyleSheet.absoluteFill}
-      pointerEvents="none"
-      onLayout={(e) => setSize(e.nativeEvent.layout)}
-    >
+    <View style={StyleSheet.absoluteFill} pointerEvents="none" onLayout={(e) => setSize(e.nativeEvent.layout)}>
       {size && (
         <Svg width={size.width} height={size.height}>
-          <Defs>
-            <RadialGradient
-              id={id}
-              gradientUnits="userSpaceOnUse"
-              cx={size.width / 2}
-              cy={size.height / 2}
-              rx={size.width / 2}
-              ry={size.height / 2}
-              fx={size.width / 2}
-              fy={size.height / 2}
-            >
-              <Stop offset={GLOW_CLEAR} stopColor={color} stopOpacity={0} />
-              <Stop offset={1} stopColor={color} stopOpacity={GLOW_OPACITY} />
-            </RadialGradient>
-          </Defs>
-          <Rect x={0} y={0} width={size.width} height={size.height} rx={radius} fill={`url(#${id})`} />
+          <Path d={d} fill="none" stroke={color} strokeWidth={THIRD_BORDER} />
         </Svg>
       )}
     </View>
   );
 }
 
-// Low, Medium, High. The chosen one glows in its colour with a matching edge.
-function LevelButtons({ value, onChange }) {
-  return (
-    <View style={styles.levelRow}>
-      {LEVEL_KEYS.map((key) => {
-        const active = key === value;
-        return (
-          <TouchableOpacity
-            key={key}
-            style={[styles.levelButton, active && { borderColor: LEVELS[key].color }]}
-            onPress={() => onChange(key)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: active }}
-          >
-            {active && <Glow color={LEVELS[key].color} radius={7} />}
-            <Text
-              numberOfLines={1}
-              maxFontSizeMultiplier={2.5}
-              style={[styles.levelText, active && styles.levelTextActive]}
-            >
-              {LEVELS[key].label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    overflow: 'hidden',
+  panel: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
   },
   body: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    gap: 18,
+    paddingHorizontal: 14,
+    paddingTop: 16,
+    paddingBottom: 16,
+    gap: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: BODY_RADIUS,
   },
   row: {
     flexDirection: 'row',
-  },
-  levelRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  levelButton: {
-    flex: 1,
-    paddingVertical: 11,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: '#D1D5DB',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  levelText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  levelTextActive: {
-    color: LEVEL_TEXT_COLOR,
   },
 
   // Manual
@@ -442,7 +428,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   valueLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
     color: '#374151',
     flexShrink: 1,
@@ -471,11 +457,9 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
   },
   tableHeading: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
     color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
   },
   tableScroll: {
     maxHeight: 320,
@@ -485,10 +469,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: UNSELECTED_FILL,
   },
   tableRound: {
-    width: 36,
+    width: 52,
   },
   tableRoundText: {
     fontSize: 16,
@@ -513,8 +497,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 999,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: '#D1D5DB',
+    backgroundColor: '#FFFFFF',
   },
   patternText: {
     fontSize: 13,
@@ -533,8 +518,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   roundChipNumber: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '300',
     color: LEVEL_TEXT_COLOR,
   },
   roundChipLevel: {
@@ -547,15 +532,14 @@ const styles = StyleSheet.create({
   // Thirds bar
   thirds: {
     flexDirection: 'row',
-    borderRadius: 10,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
   },
   third: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 56,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
   },
   thirdManual: {
     paddingVertical: 2,
@@ -568,13 +552,13 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   thirdLevel: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '500',
     color: LEVEL_TEXT_COLOR,
   },
   thirdWait: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '300',
     color: LEVEL_TEXT_COLOR,
     fontVariant: ['tabular-nums'],
   },
@@ -582,6 +566,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 28,
     borderRadius: 0,
+    borderWidth: 0,
     backgroundColor: 'transparent',
   },
   thirdsHint: {
