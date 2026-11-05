@@ -11,7 +11,7 @@ A boxing interval timer that fires random audio cues so you have to react to the
 Setup has two sections, **Round structure** and **Random beeps**; Focus, Intensity and Feedback sit inside Random beeps. Tap any heading to collapse it to a one-line summary. Only one of the two sections is open at a time: opening one collapses the other.
 
 - **Random beeps** — on or off. Off makes a plain interval timer, with an optional *Focus* text shown under the timer in work rounds.
-- **Focus** (beeps on) — *On the call*: what you throw on each beep. One call is *Classic*; tap **+** to make it *A* and add *B*, then *C* (each a voice call with its own shape). Tap a call's combo to cycle 1–2, 3–4 and 5–6+ punches; hold it to type your own (e.g. `jab, cross, slip`, split on commas and dashes) or pick one from a list. Each move gets the same time (`MOVE_SECONDS` in `src/utils/combo.js`), so a call's attack time comes from its combo. Swipe a call left to remove it. *Between calls* is optional text shown under the timer while you wait.
+- **Focus** (beeps on) — *On the call*: what you throw on each beep. One call is *Classic*; tap **+** to make it *A* and add *B*, then *C* (each a voice call with its own shape). Tap a call itself to choose its sound: Classic is a whistle or a beep, and A, B and C share one voice (Adam, Michael or Lewis); each option plays as you tap it. Tap a call's combo to cycle 1–2, 3–4 and 5–6+ punches; hold it to type your own (e.g. `jab, cross, slip`, split on commas and dashes) or pick one from a list. Each move gets the same time (`MOVE_SECONDS` in `src/utils/combo.js`), so a call's attack time comes from its combo. Swipe a call left to remove it. *Between calls* is optional text shown under the timer while you wait.
 - **Intensity** (beeps on) — how often the beeps come. *Preset*: Low, Medium or High; *Advanced* sets it *Per round* (a chip per round, with Competition, Build up and Pyramid patterns) or *Within round* (a bar split into thirds, the same in every round). *Manual*: *Avg. wait* or *Calls per round*; change one and the other follows.
 - **Feedback** (beeps on) — toggle screen flash and vibration on each cue. The flash is *Soft* (default, the red fades to pink and back), *Sharp* (red snaps to white) or *Minimal* (only the timer pulses; the default when Reduce Motion is on).
 
@@ -20,7 +20,7 @@ Every setting, including which sections are collapsed, is saved on the device. *
 Tap **ENTER** to continue.
 
 **Running** — the screen shows the current phase (warm-up, work, rest, cool-down), a large countdown, and elapsed/remaining time. In a work round it also shows how many of the round's beeps have played, e.g. "2 of 3 calls", and the Between calls (or Focus) text under the timer. Audio cues fire at random intervals within the bounds you set. On each cue:
-- The call's sound plays: the Classic beep, or the voice calling A, B or C
+- The call's sound plays: the Classic whistle or beep, or the chosen voice calling A, B or C
 - The timer shrinks to the top and the call shows in the middle (the Randoro trace for Classic, or A's triangle, B's square or C's circle, with its combo) for the call's attack time
 - The screen flashes (if enabled), and stays light pink (Soft, with red text) or white (Sharp) while the call shows
 - The phone vibrates (if enabled)
@@ -47,7 +47,7 @@ npm install
 node scripts/generate-sounds.js
 ```
 
-The second command generates the WAV files the app plays. The build fails without them.
+The second command generates the WAV files the app plays. The build fails without them. The voice calls come from a separate script that needs Kokoro (see [Sound assets](#sound-assets)).
 
 ## iOS
 
@@ -171,7 +171,7 @@ src/
 
 scripts/
   generate-sounds.js   Generates beep WAVs and the silence track
-  make-voice-calls.sh  Generates the A, B and C voice calls (macOS say + ffmpeg)
+  make-voice-calls.py  Generates the A, B and C voice calls (Kokoro TTS + ffmpeg)
   make-heartbeat.sh    Cuts the home-screen heartbeat from a source mp3
   make-icons.sh        Renders the app icons and splash image from the icon SVG
   store-screenshots.sh Captures the App Store screenshots on the iOS simulators (uses Maestro)
@@ -186,17 +186,19 @@ USER_NEEDS.md          User needs behind the features
 
 ## Sound assets
 
-Beep files (`classic`, `double`, `double_rest`, `warmup`, `cooldown`, `warning`, `countdown`) generated at 44.1 kHz, 16-bit, mono PCM. Each is a harmonic-rich tone (odd harmonics over the fundamental) for perceived loudness, normalised to its true measured peak. Every beep file is padded to 1 s, because Android's ExoPlayer plays nothing on the first play of a shorter clip.
+The Classic call is `classic_whistle` (a synthesised pea whistle: a ~3 kHz tone trilled about 30 times a second, with breath noise) or `classic_beep`.
+
+Beep files (`classic_beep`, `double`, `double_rest`, `warmup`, `cooldown`, `warning`, `countdown`) generated at 44.1 kHz, 16-bit, mono PCM. Each is a harmonic-rich tone (odd harmonics over the fundamental) for perceived loudness, normalised to its true measured peak. Every beep file is padded to 1 s, because Android's ExoPlayer plays nothing on the first play of a shorter clip.
 
 The silence track is 5 minutes of low-amplitude 110 Hz sine at 8 kHz mono (~4.8 MB). Two players take turns playing it at low volume while the running screen is open, so audio never stops. Continuous audio keeps background beeps firing, holds the Bluetooth route open, and keeps an idle Bluetooth output from clipping the first beep.
 
-The voice calls (`a`, `b`, `c`) are macOS text-to-speech, trimmed to the spoken letter (under 0.5 s) and padded to 1 s. A call's label in the workout is its sound's file name.
+The voice calls are `<letter>_<voice>` (`a_adam`, `b_lewis`, ...), spoken by [Kokoro](https://github.com/thewh1teagle/kokoro-onnx) (Apache 2.0) and trimmed to the spoken letter (under 0.5 s), peak-normalised and padded to 1 s. `src/constants/sounds.js` lists the sounds and maps a call's label in the workout to its file. Setup for the voice script is in its header.
 
 Regenerate when the scripts change:
 
 ```bash
 node scripts/generate-sounds.js
-scripts/make-voice-calls.sh
+python scripts/make-voice-calls.py <kokoro-models-folder>
 ```
 
 ## Navigating this repo

@@ -16,6 +16,7 @@ import { PHASE_COLORS, SOFT_FLASH_COLOR, CALL_RED } from '../constants/theme';
 import { formatTime, formatElapsed } from '../utils/time';
 import { parseCombo } from '../utils/combo';
 import { CallShape, RandoroSymbol } from '../components/CallShape';
+import { callSound, DEFAULT_CLASSIC_SOUND, DEFAULT_VOICE } from '../constants/sounds';
 
 const TICK_MS = 100;
 const FADE_DURATION_MS = 200;      // a call fades in and out over this; Minimal's pulse goes there and back
@@ -28,7 +29,10 @@ const PING_FALLBACK_MS = 400; // flash anyway if the ping never reports playing
 const SILENCE_HANDOVER_S = 3;
 
 export default function RunningScreen({ route, navigation }) {
-  const { workout, flashEnabled, flashStyle = 'Soft', vibrationEnabled, focusText = '' } = route.params;
+  const {
+    workout, flashEnabled, flashStyle = 'Soft', vibrationEnabled, focusText = '',
+    sounds = { classicSound: DEFAULT_CLASSIC_SOUND, voice: DEFAULT_VOICE },
+  } = route.params;
   const { events, phases, totalDuration } = workout;
   const insets = useSafeAreaInsets();
 
@@ -52,12 +56,12 @@ export default function RunningScreen({ route, navigation }) {
 
   // ── Audio players (expo-audio) ────────────────────────────
   const playerOpts = { keepAudioSessionActive: true };
-  // One player per call. Each call's label in the workout is its sound's file name.
+  // One player per call, keyed by the call's label in the workout, in the chosen sound.
   const callOpts = { ...playerOpts, updateInterval: PING_UPDATE_MS };
-  const classicPlayer = useAudioPlayer(require('../../assets/sounds/classic.wav'), callOpts);
-  const aPlayer       = useAudioPlayer(require('../../assets/sounds/a.wav'), callOpts);
-  const bPlayer       = useAudioPlayer(require('../../assets/sounds/b.wav'), callOpts);
-  const cPlayer       = useAudioPlayer(require('../../assets/sounds/c.wav'), callOpts);
+  const classicPlayer = useAudioPlayer(callSound('classic', sounds), callOpts);
+  const aPlayer       = useAudioPlayer(callSound('a', sounds), callOpts);
+  const bPlayer       = useAudioPlayer(callSound('b', sounds), callOpts);
+  const cPlayer       = useAudioPlayer(callSound('c', sounds), callOpts);
   const callPlayers = useMemo(
     () => ({ classic: classicPlayer, a: aPlayer, b: bPlayer, c: cPlayer }),
     [classicPlayer, aPlayer, bPlayer, cPlayer],

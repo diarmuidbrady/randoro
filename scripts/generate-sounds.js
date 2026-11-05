@@ -2,7 +2,8 @@
  * Generates WAV audio files for Randoro v2.
  *
  * Sound types (frequencies and durations are in the `files` map below):
- *   classic.wav     — single beep            (the Classic call)
+ *   classic_whistle.wav — a referee's pea whistle (the Classic call, by default)
+ *   classic_beep.wav    — single beep             (the Classic call, as a beep)
  *   double.wav      — two beeps              (work/round start)
  *   double_rest.wav — two lower, longer beeps (rest start)
  *   warmup.wav      — three rising beeps     (warmup start)
@@ -50,7 +51,7 @@ function tone(freq, i) {
   return v;
 }
 
-function buildWav(beeps) {
+function beepPcm(beeps) {
   const fadeSamples = Math.floor(SAMPLE_RATE * FADE_S);
   const gapSamples  = Math.floor(SAMPLE_RATE * GAP_S);
 
@@ -75,6 +76,85 @@ function buildWav(beeps) {
     }
   }
 
+  return pcm;
+}
+
+// ── Whistle ──────────────────────────────────────────────────
+// A pea whistle: a bright tone near 3 kHz that the rolling pea trills, wobbling
+// its pitch and loudness about 30 times a second, with breath through it.
+const WHISTLE = {
+  duration: 0.38,   // s
+  freq: 3000,       // Hz, where the tone settles
+  scoop: 0.9,       // starts at this share of freq as the breath builds...
+  scoopS: 0.025,    // ...over this long
+  trillHz: 30,      // the pea's rattle
+  trillJitter: 0.15,
+  trillPitch: 0.03, // pitch wobble, as a share of freq
+  trillDepth: 0.45, // how far the rattle dips the loudness
+  breath: 0.18,     // breath noise around the tone, relative to it
+  attackS: 0.012,
+  releaseS: 0.05,
+};
+
+// Repeatable noise, so the file is the same every run.
+function noiseSource(seed) {
+  let x = seed;
+  return () => {
+    x = (x * 1664525 + 1013904223) >>> 0;
+    return x / 2 ** 31 - 1;
+  };
+}
+
+// A band-pass filter (RBJ biquad) around `freq`.
+function bandPass(freq, q) {
+  const w = 2 * Math.PI * freq / SAMPLE_RATE;
+  const alpha = Math.sin(w) / (2 * q);
+  const a0 = 1 + alpha;
+  const b0 = alpha / a0, b2 = -alpha / a0;
+  const a1 = -2 * Math.cos(w) / a0, a2 = (1 - alpha) / a0;
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  return (x) => {
+    const y = b0 * x + b2 * x2 - a1 * y1 - a2 * y2;
+    x2 = x1; x1 = x; y2 = y1; y1 = y;
+    return y;
+  };
+}
+
+function whistlePcm(w = WHISTLE) {
+  const n = Math.floor(SAMPLE_RATE * w.duration);
+  const noise = noiseSource(7);
+  const breath = bandPass(w.freq, 3);
+  const pcm = [];
+  let phase = 0;
+  let trillPhase = 0;
+  let trillRate = w.trillHz;
+
+  for (let i = 0; i < n; i++) {
+    const t = i / SAMPLE_RATE;
+    // The pea doesn't roll evenly: each turn of the trill takes a slightly different time.
+    const lastTrill = trillPhase;
+    trillPhase += 2 * Math.PI * trillRate / SAMPLE_RATE;
+    if (Math.floor(trillPhase / (2 * Math.PI)) > Math.floor(lastTrill / (2 * Math.PI))) {
+      trillRate = w.trillHz * (1 + w.trillJitter * noise());
+    }
+    const trill = Math.sin(trillPhase);
+
+    // Pitch scoops up as the breath builds, then wobbles with the pea.
+    const scoop = t < w.scoopS ? w.scoop + (1 - w.scoop) * (t / w.scoopS) : 1;
+    const freq = w.freq * scoop * (1 + w.trillPitch * trill);
+    phase += 2 * Math.PI * freq / SAMPLE_RATE;
+    const tone = Math.sin(phase) + 0.15 * Math.sin(2 * phase) + 0.05 * Math.sin(3 * phase);
+    const air = breath(noise()) * 6;
+
+    let amp = (tone + w.breath * air) * (1 - w.trillDepth * (0.5 + 0.5 * Math.sin(trillPhase + 0.8)));
+    if (t < w.attackS) amp *= t / w.attackS;
+    if (t > w.duration - w.releaseS) amp *= (w.duration - t) / w.releaseS;
+    pcm.push(amp);
+  }
+  return pcm;
+}
+
+function buildWav(pcm) {
   // Peak-normalize to the true measured peak (not the theoretical harmonic sum,
   // which overshoots because the harmonics never all crest on the same sample).
   // Scaling by PEAK / actualPeak lands the loudest sample exactly at PEAK.
@@ -163,7 +243,7 @@ fs.mkdirSync(outDir, { recursive: true });
 const ROUND_START_HZ = 625;
 
 const files = {
-  'classic.wav':     [ { freq: 750, duration: 0.10 } ],
+  'classic_beep.wav': [ { freq: 750, duration: 0.10 } ],
   'double.wav':      [ { freq: ROUND_START_HZ, duration: 0.10 }, { freq: ROUND_START_HZ, duration: 0.10 } ],
   'double_rest.wav': [ { freq: 500, duration: 0.20 }, { freq: 500, duration: 0.20 } ],
   'warmup.wav':      [ { freq: 500, duration: 0.20 }, { freq: 510, duration: 0.15 }, { freq: 600, duration: 0.10 } ],
@@ -173,9 +253,12 @@ const files = {
 };
 
 for (const [name, beeps] of Object.entries(files)) {
-  fs.writeFileSync(path.join(outDir, name), buildWav(beeps));
+  fs.writeFileSync(path.join(outDir, name), buildWav(beepPcm(beeps)));
   console.log(`  ✓  ${name}`);
 }
+
+fs.writeFileSync(path.join(outDir, 'classic_whistle.wav'), buildWav(whistlePcm()));
+console.log(`  ✓  classic_whistle.wav`);
 
 fs.writeFileSync(path.join(outDir, 'silence.wav'), buildSilenceWav(5 * 60));
 console.log(`  ✓  silence.wav`);

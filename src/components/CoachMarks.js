@@ -25,7 +25,8 @@ const MAIN_STEPS = [
     target: 'focus',
     caption: 'This is your combo: what you throw on each beep.',
     detail: [
-      { target: 'speaker', caption: 'Tap the speaker to hear the beep.' },
+      { target: 'speaker', caption: 'Tap the speaker to hear the call.' },
+      { target: 'soundSide', caption: 'Tap the call to choose its sound: a whistle or beep, or the voice for A, B and C.' },
       { target: 'comboSide', caption: 'Tap here to change the combo length: 1–2, 3–4 or 5–6+ punches.' },
       { target: 'comboSide', caption: 'Hold it to type your own combo, like jab, cross, slip.' },
       { target: ['addCall', 'calls'], caption: 'Tap + to add calls A, B and C, each with its own voice and combo.' },

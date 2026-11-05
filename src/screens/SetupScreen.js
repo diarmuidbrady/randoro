@@ -29,6 +29,7 @@ import {
   switchTourPath,
 } from '../components/CoachMarks';
 import { FLASH_STYLES, LEVELS, ACCENT, SWITCH_COLORS } from '../constants/theme';
+import { CLASSIC_SOUNDS, VOICES, DEFAULT_CLASSIC_SOUND, DEFAULT_VOICE } from '../constants/sounds';
 import { formatTime, parseSeconds } from '../utils/time';
 import { generateWorkout, maxPings, meanAttack } from '../utils/generator';
 import { attackTime, callKey, BETWEEN_BEEPS_MAX, MAX_CALLS } from '../utils/combo';
@@ -54,6 +55,8 @@ const DEFAULT_CONFIG = {
   randomBeeps: true,
   calls: [newCall()],
   betweenBeeps: '',
+  classicSound: DEFAULT_CLASSIC_SOUND, // Classic's whistle or beep
+  voice: DEFAULT_VOICE,                // the voice calling A, B and C
   focus: '',
   intensityMode: 'Preset',     // Preset or Manual
   scope: 'All',                // All, PerRound or WithinRound (Advanced, Preset only)
@@ -89,6 +92,8 @@ function withDefaults(saved) {
   const config = { ...DEFAULT_CONFIG, ...(saved ?? {}) };
   if (!Array.isArray(config.calls) || config.calls.length === 0) config.calls = DEFAULT_CONFIG.calls;
   config.calls = config.calls.slice(0, MAX_CALLS).map(c => ({ ...newCall(), ...c }));
+  if (!CLASSIC_SOUNDS.some(s => s.key === config.classicSound)) config.classicSound = DEFAULT_CLASSIC_SOUND;
+  if (!VOICES.some(v => v.key === config.voice)) config.voice = DEFAULT_VOICE;
   // An older save may have more than one section of a group open: keep the first.
   const collapsed = { ...config.collapsed };
   for (const group of GROUPS) {
@@ -276,6 +281,7 @@ export default function SetupScreen({ navigation }) {
       flashEnabled: randomBeeps && config.flashEnabled,
       flashStyle: config.flashStyle,
       vibrationEnabled: randomBeeps && config.vibrationEnabled,
+      sounds: { classicSound: config.classicSound, voice: config.voice },
       focusText: (randomBeeps ? config.betweenBeeps : config.focus).trim(),
     });
   };
@@ -430,6 +436,8 @@ export default function SetupScreen({ navigation }) {
                 <FocusSection
                     calls={config.calls}
                     onChangeCalls={setField('calls')}
+                    sounds={{ classicSound: config.classicSound, voice: config.voice }}
+                    onChangeSounds={update}
                     betweenBeeps={config.betweenBeeps}
                     onChangeBetween={setField('betweenBeeps')}
                     onHelp={setTooltipKey}

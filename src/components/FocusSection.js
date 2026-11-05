@@ -14,7 +14,8 @@ import {
 import { Swipeable } from 'react-native-gesture-handler';
 import { useAudioPlayer } from 'expo-audio';
 import { CallShape, SpeakerIcon, VerticalRule } from './CallShape';
-import { CALL_RED, ACCENT } from '../constants/theme';
+import { CALL_RED, ACCENT, ACCENT_FACE } from '../constants/theme';
+import { CALL_SOUNDS, soundOptions, chosenSound, callSound } from '../constants/sounds';
 import {
   COMBO_LENGTHS,
   MAX_CALLS,
@@ -33,15 +34,17 @@ export const newCall = () => ({
 const DELETE_WIDTH = 88;
 
 // The calls the user throws on each beep, and what they work on between calls.
-export default function FocusSection({ calls, onChangeCalls, betweenBeeps, onChangeBetween, onHelp, onCallAdded, target }) {
+// `sounds` is { classicSound, voice }: Classic's whistle or beep, and the voice for A, B and C.
+export default function FocusSection({ calls, onChangeCalls, sounds, onChangeSounds, betweenBeeps, onChangeBetween, onHelp, onCallAdded, target }) {
   const [editing, setEditing] = useState(null); // id of the call whose combo is open
+  const [picking, setPicking] = useState(null); // key of the call whose sound picker is open
 
   // Each call's speaker previews its sound.
   const players = {
-    classic: useAudioPlayer(require('../../assets/sounds/classic.wav')),
-    a: useAudioPlayer(require('../../assets/sounds/a.wav')),
-    b: useAudioPlayer(require('../../assets/sounds/b.wav')),
-    c: useAudioPlayer(require('../../assets/sounds/c.wav')),
+    classic: useAudioPlayer(callSound('classic', sounds)),
+    a: useAudioPlayer(callSound('a', sounds)),
+    b: useAudioPlayer(callSound('b', sounds)),
+    c: useAudioPlayer(callSound('c', sounds)),
   };
   const preview = useCallback(async (key) => {
     try {
@@ -79,6 +82,8 @@ export default function FocusSection({ calls, onChangeCalls, betweenBeeps, onCha
             callKey={callKey(i, calls.length)}
             first={i === 0}
             removable={calls.length > 1}
+            soundName={soundName(callKey(i, calls.length), sounds)}
+            onPickSound={() => setPicking(callKey(i, calls.length))}
             onPreview={preview}
             onCycle={() => updateCall(call.id, { length: (call.length + 1) % COMBO_LENGTHS.length })}
             onEdit={() => setEditing(call.id)}
@@ -128,13 +133,25 @@ export default function FocusSection({ calls, onChangeCalls, betweenBeeps, onCha
           }}
         />
       )}
+
+      {picking && (
+        <SoundPicker
+          callKey={picking}
+          value={chosenSound(picking, sounds)}
+          onChoose={(key) => onChangeSounds(picking === 'classic' ? { classicSound: key } : { voice: key })}
+          onClose={() => setPicking(null)}
+        />
+      )}
     </View>
   );
 }
 
+const soundName = (key, sounds) =>
+  soundOptions(key).find(o => o.key === chosenSound(key, sounds))?.name ?? '';
+
 const callLabel = (key) => (key === 'classic' ? 'Classic' : key.toUpperCase());
 
-function CallRow({ call, callKey: key, first, removable, onPreview, onCycle, onEdit, onRemove, onHelp, target }) {
+function CallRow({ call, callKey: key, first, removable, soundName, onPickSound, onPreview, onCycle, onEdit, onRemove, onHelp, target }) {
   const moves = parseCombo(call.combo);
   const custom = moves.length > 0;
   const label = callLabel(key);
@@ -142,10 +159,22 @@ function CallRow({ call, callKey: key, first, removable, onPreview, onCycle, onE
   const row = (
     <View style={styles.row}>
       <View style={styles.rowMain}>
-        <View style={styles.rowLeft}>
-          {key === 'classic'
-            ? <Text maxFontSizeMultiplier={2} style={styles.classicLabel}>Classic</Text>
-            : <CallShape call={key} size={30} color={CALL_RED} />}
+        {/* Tapping the call opens its sounds; the speaker plays the chosen one. */}
+        <Pressable
+          ref={first ? target('soundSide') : undefined}
+          collapsable={false}
+          style={({ pressed }) => [styles.rowLeft, pressed && styles.pressed]}
+          onPress={onPickSound}
+          accessibilityRole="button"
+          accessibilityLabel={`${label} call, ${soundName}`}
+          accessibilityHint={key === 'classic' ? 'Choose the whistle or beep' : 'Choose the voice'}
+        >
+          <View style={styles.callId}>
+            {key === 'classic'
+              ? <Text maxFontSizeMultiplier={2} style={styles.classicLabel}>Classic</Text>
+              : <CallShape call={key} size={30} color={CALL_RED} />}
+            <Text numberOfLines={1} maxFontSizeMultiplier={1.5} style={styles.soundName}>{soundName}</Text>
+          </View>
           <TouchableOpacity
             ref={first ? target('speaker') : undefined}
             collapsable={false}
@@ -157,7 +186,7 @@ function CallRow({ call, callKey: key, first, removable, onPreview, onCycle, onE
           >
             <SpeakerIcon size={20} color="#6B7280" />
           </TouchableOpacity>
-        </View>
+        </Pressable>
 
         <DashedLine />
 
@@ -248,6 +277,60 @@ export function Chips({ moves, light }) {
   );
 }
 
+// A call's sounds: Classic's whistle or beep, or the voice for A, B and C.
+// Tapping one chooses it and plays it. Tapping outside closes.
+function SoundPicker({ callKey: key, value, onChoose, onClose }) {
+  const classic = key === 'classic';
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.editorOverlay} onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
+        <Pressable style={styles.editorBox} onPress={() => {}} accessible={false}>
+          <Text style={styles.editorTitle}>{classic ? 'Classic sound' : 'Voice for A, B and C'}</Text>
+          <View accessibilityRole="radiogroup">
+            {soundOptions(key).map(option => (
+              <SoundOption
+                key={option.key}
+                option={option}
+                source={CALL_SOUNDS[key][option.key]}
+                chosen={option.key === value}
+                onChoose={() => onChoose(option.key)}
+              />
+            ))}
+          </View>
+          <Text style={styles.moveCount}>Tap one to hear it.</Text>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function SoundOption({ option, source, chosen, onChoose }) {
+  const player = useAudioPlayer(source);
+  const press = async () => {
+    onChoose();
+    try {
+      await player.seekTo(0);
+      player.play();
+    } catch {}
+  };
+  return (
+    <TouchableOpacity
+      style={[styles.soundRow, chosen && styles.soundRowChosen]}
+      onPress={press}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: chosen }}
+      accessibilityLabel={option.note ? `${option.name}, ${option.note}` : option.name}
+    >
+      <SpeakerIcon size={18} color={chosen ? ACCENT : '#6B7280'} />
+      <View style={styles.soundText}>
+        <Text maxFontSizeMultiplier={2} style={[styles.soundOptionName, chosen && styles.soundOptionChosen]}>{option.name}</Text>
+        {option.note && <Text maxFontSizeMultiplier={2} style={styles.soundNote}>{option.note}</Text>}
+      </View>
+      {chosen && <Text style={styles.check}>✓</Text>}
+    </TouchableOpacity>
+  );
+}
+
 // The user types a combo or picks one. Tapping outside saves it.
 function ComboEditor({ call, label, onSave }) {
   const [text, setText] = useState(call.combo);
@@ -333,6 +416,17 @@ const styles = StyleSheet.create({
     paddingLeft: 14,
     paddingRight: 10,
     paddingVertical: 8,
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
+  },
+  callId: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  soundName: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#6B7280',
   },
   classicLabel: {
     fontSize: 14,
@@ -526,5 +620,39 @@ const styles = StyleSheet.create({
   presetText: {
     fontSize: 15,
     color: '#374151',
+  },
+
+  // Sound picker
+  soundRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  soundRowChosen: {
+    backgroundColor: ACCENT_FACE,
+  },
+  soundText: {
+    flex: 1,
+  },
+  soundOptionName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  soundOptionChosen: {
+    fontWeight: '600',
+    color: ACCENT,
+  },
+  soundNote: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  check: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: ACCENT,
   },
 });

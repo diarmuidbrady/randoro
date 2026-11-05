@@ -83,7 +83,7 @@ function generatePings(duration, n, beepTypes, lead) {
  * @param {boolean} config.restFirst    - If true, rest comes before each work round
  * @param {number} config.cooldown      - Cooldown duration (seconds)
  * @param {object[]} config.beepTypes   - [{ label, attack, combo }]: one (Classic) or
- *                                        several (A, B, C). Each label is its sound's file name.
+ *                                        several (A, B, C). Each label is its call's key in CALL_SOUNDS.
  * @param {object[][]} config.roundPlans - Per round, the equal segments it's split into,
  *                                        each { wait } (average wait, seconds) or { beeps }
  * @param {boolean} config.randomBeeps  - If false, no pings: a plain interval timer
