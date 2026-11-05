@@ -12,11 +12,17 @@ export const PHASE_COLORS = {
 export const FLASH_STYLES = ['Soft', 'Sharp', 'Minimal'];
 export const SOFT_FLASH_COLOR = '#FCA5A5';
 
-// Intensity sets the average wait (anticipation) in seconds, the random part
-// of each gap between pings, on top of the combo time.
-export const INTENSITY_MAP = { Low: 9, Medium: 6, High: 3 };
-export const INTENSITY_LABELS = ['Low', 'Medium', 'High'];
+// Intensity levels. Each sets the average wait in seconds, the random part of
+// each gap between beeps, on top of the call's attack time. The colour always
+// comes with the letter, for colourblind users.
+export const LEVELS = {
+  L: { label: 'Low',    wait: 9, color: '#FACC15' },
+  M: { label: 'Medium', wait: 6, color: '#FB923C' },
+  H: { label: 'High',   wait: 3, color: '#EF4444' },
+};
+export const LEVEL_KEYS = ['L', 'M', 'H'];
+export const LEVEL_TEXT_COLOR = '#111827';
 
-// Attack Length sets the execution time in seconds, the fixed part of each gap.
-export const COMBO_MAP = { '1-2': 1, '3-4': 2, '5-6+': 3 };
-export const COMBO_LABELS = ['1-2', '3-4', '5-6+'];
+// Calls A, B and C each have a shape, on the setup screen and the run screen.
+export const CALL_SHAPES = { a: 'triangle', b: 'square', c: 'circle' };
+export const CALL_RED = '#EF4444';

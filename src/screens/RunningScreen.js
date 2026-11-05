@@ -12,19 +12,23 @@ import { useAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PHASE_COLORS, SOFT_FLASH_COLOR } from '../constants/theme';
+import { PHASE_COLORS, SOFT_FLASH_COLOR, CALL_RED } from '../constants/theme';
 import { formatTime, formatElapsed } from '../utils/time';
+import { parseCombo } from '../utils/combo';
+import { CallShape, RandoroSymbol } from '../components/CallShape';
 
 const TICK_MS = 100;
-const FLASH_DURATION_MS = 300;     // Sharp: how long the colours stay swapped
-const FADE_DURATION_MS = 200;      // Soft and Minimal: fade there and back
+const FADE_DURATION_MS = 200;      // a call fades in and out over this; Minimal's pulse goes there and back
 const MINIMAL_PULSE_OPACITY = 0.3; // Minimal: the timer's opacity at the pulse's peak
+const CALL_TIMER_SCALE = 0.4;      // during a call the timer shrinks to this...
+const CALL_TIMER_TOP = 4;          // ...and moves up to this far below the top bar
+const CALL_SHAPE_MAX = 180;
 const PING_UPDATE_MS = 20;    // how often the ping player reports its position while playing
 const PING_FALLBACK_MS = 400; // flash anyway if the ping never reports playing
 const SILENCE_HANDOVER_S = 3;
 
 export default function RunningScreen({ route, navigation }) {
-  const { workout, flashEnabled, flashStyle = 'Soft', vibrationEnabled } = route.params;
+  const { workout, flashEnabled, flashStyle = 'Soft', vibrationEnabled, focusText = '' } = route.params;
   const { events, phases, totalDuration } = workout;
   const insets = useSafeAreaInsets();
 
@@ -38,11 +42,26 @@ export default function RunningScreen({ route, navigation }) {
   const intervalRef = useRef(null);
   const lastEventElapsedRef = useRef(-1);
   const lastTickWallTimeRef = useRef(null); // for catch-up detection after backgrounding
-  const flashAnim = useRef(new Animated.Value(0)).current;
+  const flashAnim = useRef(new Animated.Value(0)).current; // Minimal's pulse
+  // The call on screen, and its fade: 0 is the timer alone, 1 the call shown.
+  const [call, setCall] = useState(null);
+  const callAnim = useRef(new Animated.Value(0)).current;
+  const callTimerRef = useRef(null);
+  const [timerLayout, setTimerLayout] = useState(null);
+  const [blockLayout, setBlockLayout] = useState(null);
 
   // ── Audio players (expo-audio) ────────────────────────────
   const playerOpts = { keepAudioSessionActive: true };
-  const pingPlayer       = useAudioPlayer(require('../../assets/sounds/ping.wav'), { ...playerOpts, updateInterval: PING_UPDATE_MS });
+  // One player per call. Each call's label in the workout is its sound's file name.
+  const callOpts = { ...playerOpts, updateInterval: PING_UPDATE_MS };
+  const classicPlayer = useAudioPlayer(require('../../assets/sounds/classic.wav'), callOpts);
+  const aPlayer       = useAudioPlayer(require('../../assets/sounds/a.wav'), callOpts);
+  const bPlayer       = useAudioPlayer(require('../../assets/sounds/b.wav'), callOpts);
+  const cPlayer       = useAudioPlayer(require('../../assets/sounds/c.wav'), callOpts);
+  const callPlayers = useMemo(
+    () => ({ classic: classicPlayer, a: aPlayer, b: bPlayer, c: cPlayer }),
+    [classicPlayer, aPlayer, bPlayer, cPlayer],
+  );
   const doublePlayer     = useAudioPlayer(require('../../assets/sounds/double.wav'), playerOpts);
   const doubleRestPlayer = useAudioPlayer(require('../../assets/sounds/double_rest.wav'), playerOpts);
   const warmupPlayer     = useAudioPlayer(require('../../assets/sounds/warmup.wav'), playerOpts);
@@ -106,16 +125,16 @@ export default function RunningScreen({ route, navigation }) {
       : [];
 
     if (Platform.OS === 'android') {
-      pingPlayer.setActiveForLockScreen(true, { title: 'randoro', artist: 'Workout in progress' });
+      classicPlayer.setActiveForLockScreen(true, { title: 'randoro', artist: 'Workout in progress' });
     }
 
     return () => {
       subs.forEach((s) => s.remove());
       if (Platform.OS === 'android') {
-        try { pingPlayer.clearLockScreenControls(); } catch {}
+        try { classicPlayer.clearLockScreenControls(); } catch {}
       }
     };
-  }, [isRunning, silenceA, silenceB, pingPlayer]);
+  }, [isRunning, silenceA, silenceB, classicPlayer]);
 
   // ── Keep awake ────────────────────────────────────────────
   useEffect(() => {
@@ -158,48 +177,74 @@ export default function RunningScreen({ route, navigation }) {
     return cooldownPlayer; // done
   }, [doublePlayer, doubleRestPlayer, warmupPlayer, cooldownPlayer]);
 
-  // ── Flash helper ──────────────────────────────────────────
-  // flashAnim runs 0 → 1 → 0. Soft and Minimal draw from it on the native
-  // driver; Sharp only uses it as a timer for the colour swap.
-  const triggerFlash = useCallback(() => {
-    if (!flashEnabled) return;
-    const sharp = flashStyle === 'Sharp';
-    const half = (sharp ? FLASH_DURATION_MS : FADE_DURATION_MS) / 2;
-    if (sharp) setIsFlashing(true);
-    Animated.sequence([
-      Animated.timing(flashAnim, { toValue: 1, duration: half, useNativeDriver: true }),
-      Animated.timing(flashAnim, { toValue: 0, duration: half, useNativeDriver: true }),
-    ]).start(() => { if (sharp) setIsFlashing(false); });
-  }, [flashEnabled, flashStyle, flashAnim]);
+  // ── Call display ──────────────────────────────────────────
+  // A call fades in over FADE_DURATION_MS: the timer shrinks and moves up, and
+  // the call's shape shows in the middle. It stays for the call's attack time,
+  // then fades out. Soft fades the background to pink with it and Sharp swaps
+  // the colours for that time; Minimal pulses the timer and leaves the
+  // background still.
+  const sharpFlash = flashEnabled && flashStyle === 'Sharp';
 
-  // ── Ping flash + haptic, in step with the sound ───────────
-  // The flash and haptic fire once the ping's position starts moving.
-  const pingCueRef = useRef(null); // fallback timer while a ping cue is pending
+  const hideCall = useCallback(() => {
+    clearTimeout(callTimerRef.current);
+    callAnim.stopAnimation();
+    callAnim.setValue(0);
+    setCall(null);
+    setIsFlashing(false);
+  }, [callAnim]);
+
+  const showCall = useCallback((event) => {
+    clearTimeout(callTimerRef.current);
+    setCall(event);
+    if (sharpFlash) setIsFlashing(true);
+    if (flashEnabled && flashStyle === 'Minimal') {
+      const half = FADE_DURATION_MS / 2;
+      Animated.sequence([
+        Animated.timing(flashAnim, { toValue: 1, duration: half, useNativeDriver: true }),
+        Animated.timing(flashAnim, { toValue: 0, duration: half, useNativeDriver: true }),
+      ]).start();
+    }
+    Animated.timing(callAnim, { toValue: 1, duration: FADE_DURATION_MS, useNativeDriver: true }).start();
+    callTimerRef.current = setTimeout(() => {
+      setIsFlashing(false);
+      Animated.timing(callAnim, { toValue: 0, duration: FADE_DURATION_MS, useNativeDriver: true })
+        .start(({ finished }) => { if (finished) setCall(null); });
+    }, (event.attack ?? 1) * 1000);
+  }, [sharpFlash, flashEnabled, flashStyle, flashAnim, callAnim]);
+
+  useEffect(() => () => clearTimeout(callTimerRef.current), []);
+
+  // ── Call display + haptic, in step with the sound ─────────
+  // They fire once the call's sound starts moving.
+  const pingCueRef = useRef(null); // { event, timer } while a ping cue is pending
 
   const firePingCue = useCallback(() => {
-    if (!pingCueRef.current) return;
-    clearTimeout(pingCueRef.current);
+    const cue = pingCueRef.current;
+    if (!cue) return;
+    clearTimeout(cue.timer);
     pingCueRef.current = null;
     if (vibrationEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    triggerFlash();
-  }, [vibrationEnabled, triggerFlash]);
+    showCall(cue.event);
+  }, [vibrationEnabled, showCall]);
 
-  const queuePingCue = useCallback(() => {
-    clearTimeout(pingCueRef.current);
-    pingCueRef.current = setTimeout(firePingCue, PING_FALLBACK_MS);
+  const queuePingCue = useCallback((event) => {
+    clearTimeout(pingCueRef.current?.timer);
+    pingCueRef.current = { event, timer: setTimeout(firePingCue, PING_FALLBACK_MS) };
   }, [firePingCue]);
 
   useEffect(() => {
-    const sub = pingPlayer.addListener('playbackStatusUpdate', (status) => {
-      if (status.playing && status.currentTime > 0) {
-        firePingCue();
-      }
-    });
+    const subs = Object.entries(callPlayers).map(([key, player]) =>
+      player.addListener('playbackStatusUpdate', (status) => {
+        if (status.playing && status.currentTime > 0 && pingCueRef.current?.event.call === key) {
+          firePingCue();
+        }
+      })
+    );
     return () => {
-      sub.remove();
-      clearTimeout(pingCueRef.current);
+      subs.forEach((s) => s.remove());
+      clearTimeout(pingCueRef.current?.timer);
     };
-  }, [pingPlayer, firePingCue]);
+  }, [callPlayers, firePingCue]);
 
   // ── Tick ──────────────────────────────────────────────────
   const tick = useCallback(() => {
@@ -218,8 +263,10 @@ export default function RunningScreen({ route, navigation }) {
       e => e.type === 'ping' && e.time > lastEventElapsedRef.current && e.time <= current
     );
     if (!isCatchUp && pingsToFire.length > 0) {
-      playSound(pingPlayer);
-      queuePingCue();
+      const ping = pingsToFire[pingsToFire.length - 1];
+      const event = { ...ping, call: callPlayers[ping.call] ? ping.call : 'classic' };
+      playSound(callPlayers[event.call]);
+      queuePingCue(event);
     }
 
     const phaseEvents = events.filter(
@@ -252,7 +299,7 @@ export default function RunningScreen({ route, navigation }) {
     setElapsed(current);
   }, [
     events, totalDuration, vibrationEnabled,
-    pingPlayer, doublePlayer, doubleRestPlayer, warmupPlayer, cooldownPlayer, warningPlayer, countdownPlayer,
+    callPlayers, doublePlayer, doubleRestPlayer, warmupPlayer, cooldownPlayer, warningPlayer, countdownPlayer,
     playSound, queuePingCue,
   ]);
   tickRef.current = tick;
@@ -297,11 +344,14 @@ export default function RunningScreen({ route, navigation }) {
     pausedElapsedRef.current = targetTime;
     lastEventElapsedRef.current = targetTime;
     setElapsed(targetTime);
+    clearTimeout(pingCueRef.current?.timer);
+    pingCueRef.current = null;
+    hideCall();
     if (isRunning) {
       startTimeRef.current = Date.now();
       playSound(playerForPhaseType(targetPhase.type));
     }
-  }, [phases, isRunning, playSound, playerForPhaseType]);
+  }, [phases, isRunning, playSound, playerForPhaseType, hideCall]);
 
   const currentPhaseIndex = phases.indexOf(currentPhase);
   const handlePrevPhase = () => jumpToPhaseIndex(currentPhaseIndex - 1);
@@ -310,18 +360,37 @@ export default function RunningScreen({ route, navigation }) {
   // ── Colours: invert on a Sharp flash ──────────────────────
   const bgColor = isFlashing ? phaseColors.text : phaseColors.background;
   const fgColor = isFlashing ? phaseColors.background : phaseColors.text;
-  const timerOpacity = flashStyle === 'Minimal'
+  const timerOpacity = flashEnabled && flashStyle === 'Minimal'
     ? flashAnim.interpolate({ inputRange: [0, 1], outputRange: [1, MINIMAL_PULSE_OPACITY] })
     : 1;
+  const softFlash = flashEnabled && flashStyle === 'Soft';
+
+  // The shape is red on Soft's pink and Sharp's white, and white on the red
+  // background otherwise.
+  const lightCall = softFlash || sharpFlash;
+  const shapeColor = lightCall ? CALL_RED : phaseColors.text;
+  const letterColor = lightCall ? '#FFFFFF' : CALL_RED;
+
+  // During a call the timer shrinks and moves up to sit just below the top bar.
+  const timerShift = timerLayout
+    ? timerLayout.y + timerLayout.height / 2 - (CALL_TIMER_TOP + (timerLayout.height * CALL_TIMER_SCALE) / 2)
+    : 0;
+  const timerTransform = [
+    { translateY: callAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -timerShift] }) },
+    { scale: callAnim.interpolate({ inputRange: [0, 1], outputRange: [1, CALL_TIMER_SCALE] }) },
+  ];
+  const shapeSize = blockLayout ? Math.min(CALL_SHAPE_MAX, blockLayout.height * 0.45, blockLayout.width * 0.5) : 0;
+  const focusVisible = currentPhase.type === 'work' && focusText.length > 0;
+  const callMoves = call?.combo ? parseCombo(call.combo) : [];
 
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
       {/* Soft: a pink layer behind the content fades in and out. The native
           driver animates opacity but not backgroundColor. */}
-      {flashStyle === 'Soft' && (
+      {softFlash && (
         <Animated.View
           pointerEvents="none"
-          style={[StyleSheet.absoluteFill, { backgroundColor: SOFT_FLASH_COLOR, opacity: flashAnim }]}
+          style={[StyleSheet.absoluteFill, { backgroundColor: SOFT_FLASH_COLOR, opacity: callAnim }]}
         />
       )}
       <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
@@ -336,12 +405,53 @@ export default function RunningScreen({ route, navigation }) {
           <View style={styles.hitSlop} />
         </View>
 
-        {/* Large countdown */}
-        <Animated.View style={[styles.timerBlock, { opacity: timerOpacity }]}>
-          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.timerText, { color: fgColor }]}>
-            {formatTime(phaseRemaining)}
-          </Text>
-        </Animated.View>
+        {/* Large countdown, with the focus text under it and the call over it */}
+        <View style={styles.timerBlock} onLayout={(e) => setBlockLayout(e.nativeEvent.layout)}>
+          <Animated.View
+            style={{ opacity: timerOpacity, transform: timerTransform }}
+            onLayout={(e) => setTimerLayout(e.nativeEvent.layout)}
+          >
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.timerText, { color: fgColor }]}>
+              {formatTime(phaseRemaining)}
+            </Text>
+          </Animated.View>
+          {/* Between beeps (or Focus without beeps) shows in work rounds while
+              no call is on screen. It keeps its space in other phases so the
+              timer doesn't jump. */}
+          {focusText.length > 0 && (
+            <Animated.Text
+              numberOfLines={2}
+              maxFontSizeMultiplier={1.5}
+              style={[
+                styles.focusText,
+                { color: fgColor, opacity: focusVisible ? callAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) : 0 },
+              ]}
+            >
+              {focusText}
+            </Animated.Text>
+          )}
+          {call && (
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.callOverlay,
+                {
+                  opacity: callAnim,
+                  transform: [{ scale: callAnim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }],
+                },
+              ]}
+            >
+              {call.call === 'classic'
+                ? <RandoroSymbol width={shapeSize * 1.5} color={shapeColor} />
+                : <CallShape call={call.call} size={shapeSize} color={shapeColor} letterColor={letterColor} />}
+              {callMoves.length > 0 && (
+                <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={[styles.callCombo, { color: shapeColor }]}>
+                  {callMoves.join(' · ')}
+                </Text>
+              )}
+            </Animated.View>
+          )}
+        </View>
 
         {/* Round info */}
         <View style={styles.roundBlock}>
@@ -440,6 +550,25 @@ const styles = StyleSheet.create({
     fontWeight: '200',
     fontVariant: ['tabular-nums'],
     letterSpacing: -2,
+  },
+  focusText: {
+    fontSize: 18,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  callOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingTop: 48,
+  },
+  callCombo: {
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    paddingHorizontal: 16,
   },
   roundBlock: {
     flexDirection: 'row',

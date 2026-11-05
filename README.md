@@ -8,17 +8,19 @@ A boxing interval timer that fires random audio cues so you have to react to the
 **Setup** — configure your session before starting:
 
 - **Round Structure** — set warm-up, number of rounds, work duration, rest duration, and cool-down. Tap any duration to open a scroll wheel. The swap button (↔) flips whether work or rest comes first.
-- **Workout Style** — three tabs:
-  - *Preset* (default) — *Intensity* sets how often cues fire (Low fires infrequently, High fires constantly). *Attack Length* is the execution time, the fixed time you get to attack after each cue, based on the number of punches you throw (1-2 gives a short window, 5-6+ a longer one).
-  - *Manual* — *Intensity* is set by *Time* (*Avg. Anticipation Time*, the variable wait before each cue) or by *Count* (*Attacks per Round*). *Attack Length* is the fixed *Execution Time* after each cue in seconds, set to fit the number of punches you throw. *Avg. Time Between Beeps* shows the variable anticipation time plus the fixed execution time. If the attacks don't fit the round, you're told and the workout won't start until you change something.
-  - *Simple* — no random cues, a plain interval timer.
-- **Feedback** — toggle screen flash and vibration on each cue. The flash is *Soft* (default, the red fades to pink and back), *Sharp* (red snaps to white) or *Minimal* (only the timer pulses; the default when Reduce Motion is on). Greyed out in Simple, since there are no cues.
+- **Random Beeps** — on or off. Off makes a plain interval timer, with an optional *Focus* text shown under the timer in work rounds.
+- **Focus** (beeps on) — the calls: what you throw on each beep. One call is *Classic*; tap **+** to make it *A* and add *B*, then *C* (each a voice call with its own shape). Tap a call's combo to cycle 1–2, 3–4 and 5–6+ punches; hold it to type your own (e.g. `jab, cross, slip`, split on commas and dashes) or pick one from a list. Each move gets the same time (`MOVE_SECONDS` in `src/utils/combo.js`), so a call's attack time comes from its combo. Swipe a call left to remove it. *Between beeps* is optional text shown under the timer while you wait.
+- **Intensity** (beeps on) — how often the beeps come. *Preset*: Low, Medium or High. *Manual*: *Avg. wait* or *Beeps per round*; change one and the other follows. *Advanced* sets it *Per round* (Preset: a chip per round, with Competition, Build up and Pyramid patterns; Manual: a table) or *Within round* (a bar split into thirds, the same in every round).
+- **Feedback** — toggle screen flash and vibration on each cue. The flash is *Soft* (default, the red fades to pink and back), *Sharp* (red snaps to white) or *Minimal* (only the timer pulses; the default when Reduce Motion is on). Greyed out without random beeps.
+
+Every setting is saved on the device. **How it works** replays the coach-mark tour that runs on first launch (a *Simple* and an *Advanced* path), and the first time you open some features a one-off tip explains them.
 
 Tap **ENTER** to continue.
 
-**Running** — the screen shows the current phase (warm-up, work, rest, cool-down), a large countdown, and elapsed/remaining time. In a work round it also shows how many of the round's beeps have played, e.g. "2 of 3 beeps". Audio cues fire at random intervals within the bounds you set. On each cue:
-- A beep plays
-- The screen flashes (if enabled)
+**Running** — the screen shows the current phase (warm-up, work, rest, cool-down), a large countdown, and elapsed/remaining time. In a work round it also shows how many of the round's beeps have played, e.g. "2 of 3 beeps", and the Between beeps (or Focus) text under the timer. Audio cues fire at random intervals within the bounds you set. On each cue:
+- The call's sound plays: the Classic beep, or the voice calling A, B or C
+- The timer shrinks to the top and the call shows in the middle (the Randoro trace for Classic, or A's triangle, B's square or C's circle, with its combo) for the call's attack time
+- The screen flashes (if enabled), and stays pink (Soft) or white (Sharp) while the call shows
 - The phone vibrates (if enabled)
 
 Before each work round, a long low beep gives a 10-second warning, then three long beeps count 3-2-1 into the round-start beep.
@@ -147,19 +149,26 @@ plugins/
 src/
   screens/
     HomeScreen.js      Animated landing screen (dot reveals "randoro", then Get Ready)
-    SetupScreen.js     Workout configuration (rounds, work/rest duration, intensity, combo)
-    RunningScreen.js   Workout execution with audio cues
-    HowItWorksScreen.js  Tutorial cards with sound demos
+    SetupScreen.js     Workout configuration, saved settings, tour and tips
+    RunningScreen.js   Workout execution with audio cues and the call display
   components/
+    FocusSection.js    Call rows, combo editor, Between beeps
+    IntensitySection.js  Preset / Manual, per-round and within-round intensity
+    CoachMarks.js      Spotlight overlay, tour steps and first-time tips
+    CallShape.js       Call shapes, the Randoro trace, small icons
+    Controls.js        Tabs, segments, steppers
     WheelPicker.js     Scroll wheel for durations and rounds (iOS and Android)
   utils/
     generator.js       Builds the workout event timeline
+    combo.js           Combo parsing and attack time
+    intensity.js       Levels, patterns, Manual linking, per-round plans
     time.js            Time formatting / parsing
   constants/
-    theme.js           Colors, intensity/combo presets
+    theme.js           Colors, intensity levels, call shapes
 
 scripts/
   generate-sounds.js   Generates beep WAVs and the silence track
+  make-voice-calls.sh  Generates the A, B and C voice calls (macOS say + ffmpeg)
   make-heartbeat.sh    Cuts the home-screen heartbeat from a source mp3
   make-icons.sh        Renders the app icons and splash image from the icon SVG
   store-screenshots.sh Captures the App Store screenshots on the iOS simulators (uses Maestro)
@@ -174,14 +183,17 @@ USER_NEEDS.md          User needs behind the features
 
 ## Sound assets
 
-Beep files (`ping`, `double`, `double_rest`, `warmup`, `cooldown`, `warning`, `countdown`) generated at 44.1 kHz, 16-bit, mono PCM. Each is a harmonic-rich tone (odd harmonics over the fundamental) for perceived loudness, normalised to its true measured peak. Every beep file is padded to 1 s, because Android's ExoPlayer plays nothing on the first play of a shorter clip.
+Beep files (`classic`, `double`, `double_rest`, `warmup`, `cooldown`, `warning`, `countdown`) generated at 44.1 kHz, 16-bit, mono PCM. Each is a harmonic-rich tone (odd harmonics over the fundamental) for perceived loudness, normalised to its true measured peak. Every beep file is padded to 1 s, because Android's ExoPlayer plays nothing on the first play of a shorter clip.
 
 The silence track is 5 minutes of low-amplitude 110 Hz sine at 8 kHz mono (~4.8 MB). Two players take turns playing it at low volume while the running screen is open, so audio never stops. Continuous audio keeps background beeps firing, holds the Bluetooth route open, and keeps an idle Bluetooth output from clipping the first beep.
 
-Regenerate when the script changes:
+The voice calls (`a`, `b`, `c`) are macOS text-to-speech, trimmed to the spoken letter (under 0.5 s) and padded to 1 s. A call's label in the workout is its sound's file name.
+
+Regenerate when the scripts change:
 
 ```bash
 node scripts/generate-sounds.js
+scripts/make-voice-calls.sh
 ```
 
 ## Navigating this repo

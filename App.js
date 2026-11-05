@@ -6,7 +6,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import HomeScreen from './src/screens/HomeScreen';
 import SetupScreen from './src/screens/SetupScreen';
 import RunningScreen from './src/screens/RunningScreen';
-import HowItWorksScreen from './src/screens/HowItWorksScreen';
 
 const Stack = createStackNavigator();
 
@@ -27,7 +26,6 @@ export default function App() {
           <Stack.Screen name="Home" component={HomeScreen} />
           <Stack.Screen name="Setup" component={SetupScreen} />
           <Stack.Screen name="Running" component={RunningScreen} />
-          <Stack.Screen name="HowItWorks" component={HowItWorksScreen} options={{ presentation: 'modal' }} />
         </Stack.Navigator>
       </NavigationContainer>
     </GestureHandlerRootView>

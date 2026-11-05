@@ -11,9 +11,9 @@ appId: com.diarmuidbrady.randoro
 - waitForAnimationToEnd
 - tapOn: "GET READY"
 
-# A fresh install opens How it works.
+# A fresh install starts the tour on the setup screen.
 - extendedWaitUntil:
-    visible: "(?i)how it works"
+    visible: "Skip"
     timeout: 10000
 - waitForAnimationToEnd
 - takeScreenshot: 05-how-it-works
@@ -22,8 +22,9 @@ appId: com.diarmuidbrady.randoro
 - takeScreenshot: 02-setup-preset
 
 - tapOn: "Manual"
+- tapOn: "Got it"
 - scrollUntilVisible:
-    element: "Avg. Time Between Beeps"
+    element: "Beeps per round"
     centerElement: true
 - waitForAnimationToEnd
 - takeScreenshot: 03-setup-manual

@@ -10,56 +10,66 @@ const COUNTDOWN_BEEPS = [
 // an even rhythm.
 const MIN_AVG_WAIT = 1;
 
-// How many pings a round gets for an average wait and combo time.
+// How many pings a round gets for an average wait and attack time.
 // Rounding down means the real average wait lands a little under avgWait.
-export function pingsForWait(workDuration, avgWait, comboTime) {
-  return Math.max(1, Math.floor(workDuration / (avgWait + comboTime)));
+export function pingsForWait(workDuration, avgWait, attack) {
+  return Math.max(1, Math.floor(workDuration / (avgWait + attack)));
 }
 
-// Each of the n + 1 gaps is comboTime + wait, so n pings need
-// (n + 1) × (comboTime + MIN_AVG_WAIT) ≤ workDuration.
-export function maxPings(workDuration, comboTime) {
-  return Math.floor(workDuration / (comboTime + MIN_AVG_WAIT)) - 1;
+// Each of the n + 1 gaps is attack + wait, so n pings need
+// (n + 1) × (attack + MIN_AVG_WAIT) ≤ workDuration.
+export function maxPings(workDuration, attack) {
+  return Math.floor(workDuration / (attack + MIN_AVG_WAIT)) - 1;
 }
 
 // Average wait per gap when a round holds n pings.
-export function avgWaitFor(workDuration, n, comboTime) {
-  return workDuration / (n + 1) - comboTime;
+export function avgWaitFor(workDuration, n, attack) {
+  return workDuration / (n + 1) - attack;
 }
 
+// The average attack time over the beep types, used to work out how many
+// pings fit before the random sequence of calls is known.
+export function meanAttack(beepTypes) {
+  return beepTypes.reduce((sum, b) => sum + b.attack, 0) / beepTypes.length;
+}
+
+const pick = (list) => list[Math.floor(Math.random() * list.length)];
+
 /**
- * Generates random ping times within a single work round.
+ * Generates random pings within one stretch of a work round.
  *
- * @param {number} workDuration - Total round duration in seconds
- * @param {number} n            - Number of pings to generate
- * @param {number} minGap       - Combo (execution) seconds, the fixed part of each gap
- * @returns {number[]}          - Ping times relative to round start (seconds)
+ * n pings make n + 1 gaps: stretch start → first ping, between pings, and last
+ * ping → stretch end. The gap after a ping holds that call's attack time, and
+ * the first gap holds `lead`. Each gap also gets a random share of the time
+ * left over (the wait), so no ping lands on the round start or end sounds and
+ * every attack finishes before the next ping.
+ *
+ * @param {number} duration   - Stretch length in seconds
+ * @param {number} n          - Number of pings wanted
+ * @param {object[]} beepTypes - [{ label, attack, combo }] to draw calls from
+ * @param {number} lead       - Fixed seconds before the first ping
+ * @returns {{ time: number, beep: object }[]} - Times relative to the stretch start
  */
-function generatePingTimes(workDuration, n, minGap) {
-  // n pings make n + 1 gaps: round start → first ping, between pings, and
-  // last ping → round end. Each gap is minGap plus a random share of the time
-  // left over (the wait), so no ping lands on the round start or round end sounds.
-  const gaps = n + 1;
-  if (n < 1 || minGap < 0 || workDuration < gaps * minGap) return [];
+function generatePings(duration, n, beepTypes, lead) {
+  const calls = Array.from({ length: Math.max(0, n) }, () => pick(beepTypes));
+  const fixed = () => lead + calls.reduce((sum, c) => sum + c.attack, 0);
+  // A run of long calls may not fit; drop calls until they do.
+  while (calls.length > 0 && fixed() > duration) calls.pop();
+  if (calls.length === 0) return [];
 
-  if (workDuration === gaps * minGap) {
-    return Array.from({ length: n }, (_, i) => (i + 1) * minGap);
-  }
-
-  const excessTime = workDuration - gaps * minGap;
-
+  const gaps = calls.length + 1;
+  const excessTime = duration - fixed();
   const randoms = Array.from({ length: gaps }, () => Math.random());
   const total = randoms.reduce((sum, r) => sum + r, 0);
-  const normalized = randoms.map(r => (r * excessTime) / total);
+  const shares = randoms.map(r => (total > 0 ? (r * excessTime) / total : excessTime / gaps));
 
-  const pingTimes = [];
+  const pings = [];
   let cumulative = 0;
-  for (let i = 0; i < n; i++) {
-    cumulative += minGap + normalized[i];
-    pingTimes.push(cumulative);
-  }
-
-  return pingTimes;
+  calls.forEach((beep, i) => {
+    cumulative += (i === 0 ? lead : calls[i - 1].attack) + shares[i];
+    pings.push({ time: cumulative, beep });
+  });
+  return pings;
 }
 
 /**
@@ -72,9 +82,10 @@ function generatePingTimes(workDuration, n, minGap) {
  * @param {number} config.restDuration  - Rest duration between rounds (seconds)
  * @param {boolean} config.restFirst    - If true, rest comes before each work round
  * @param {number} config.cooldown      - Cooldown duration (seconds)
- * @param {number} config.avgFrequency  - Average wait (anticipation) seconds per gap, on top of minGap
- * @param {number} config.minGap        - Combo (execution) seconds, the fixed part of each gap
- * @param {number} [config.pingCount]   - Pings per round; overrides the count from avgFrequency
+ * @param {object[]} config.beepTypes   - [{ label, attack, combo }]: one (Classic) or
+ *                                        several (A, B, C). Each label is its sound's file name.
+ * @param {object[][]} config.roundPlans - Per round, the equal segments it's split into,
+ *                                        each { wait } (average wait, seconds) or { beeps }
  * @param {boolean} config.randomBeeps  - If false, no pings: a plain interval timer
  *
  * @returns {{ events: object[], phases: object[], totalDuration: number }}
@@ -87,13 +98,12 @@ export function generateWorkout(config) {
     restDuration = 60,
     restFirst = false,
     cooldown = 0,
-    avgFrequency = 5,
-    minGap = 2,
-    pingCount,
+    beepTypes = [{ label: 'classic', attack: 1, combo: '' }],
+    roundPlans = [],
     randomBeeps = true,
   } = config;
 
-  const n = pingCount ?? pingsForWait(workDuration, avgFrequency, minGap);
+  const attack = meanAttack(beepTypes);
   const events = [];
   const phases = [];
   let t = 0;
@@ -102,6 +112,21 @@ export function generateWorkout(config) {
   const addPhase = (type, duration, extra = {}) => {
     phases.push({ type, start: t, end: t + duration, ...extra });
     t += duration;
+  };
+
+  // Pings for one round: each segment is filled on its own, so a round split
+  // into thirds can run at three intensities.
+  const roundPings = (plan) => {
+    const segments = plan.length > 0 ? plan : [{ wait: 6 }];
+    const length = workDuration / segments.length;
+    return segments.flatMap((segment, i) => {
+      const n = segment.beeps ?? pingsForWait(length, segment.wait, attack);
+      // Only the round's first ping needs a lead; later segments follow on
+      // from the previous segment's last attack.
+      const lead = i === 0 ? attack : 0;
+      return generatePings(length, n, beepTypes, lead)
+        .map(p => ({ ...p, time: i * length + p.time }));
+    });
   };
 
   // Warmup
@@ -122,10 +147,17 @@ export function generateWorkout(config) {
     // Work round
     addEvent('round_start', { round: r });
     const roundStart = t;
-    const pingTimes = randomBeeps ? generatePingTimes(workDuration, n, minGap) : [];
+    const pings = randomBeeps ? roundPings(roundPlans[r - 1] ?? []) : [];
     phases.push({ type: 'work', start: t, end: t + workDuration, round: r, label: `Round ${r}` });
-    pingTimes.forEach(pt => {
-      events.push({ time: roundStart + pt, type: 'ping', round: r });
+    pings.forEach(({ time, beep }) => {
+      events.push({
+        time: roundStart + time,
+        type: 'ping',
+        round: r,
+        call: beep.label,
+        attack: beep.attack,
+        combo: beep.combo,
+      });
     });
     t += workDuration;
     addEvent('round_end', { round: r });

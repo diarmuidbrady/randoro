@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   Switch,
   ScrollView,
@@ -13,16 +14,27 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WheelPicker from '../components/WheelPicker';
-import { TUTORIAL_SEEN_KEY } from './HowItWorksScreen';
+import { Segments } from '../components/Controls';
+import FocusSection, { newCall } from '../components/FocusSection';
+import IntensitySection from '../components/IntensitySection';
 import {
-  INTENSITY_MAP,
-  INTENSITY_LABELS,
-  COMBO_MAP,
-  COMBO_LABELS,
-  FLASH_STYLES,
-} from '../constants/theme';
+  Spotlight,
+  TourControls,
+  TipControls,
+  TIPS,
+  TOUR_SEEN_KEY,
+  TIPS_SEEN_KEY,
+  tourSteps,
+  switchTourPath,
+} from '../components/CoachMarks';
+import { FLASH_STYLES, LEVELS } from '../constants/theme';
 import { formatTime, parseSeconds } from '../utils/time';
-import { generateWorkout, pingsForWait, maxPings, avgWaitFor } from '../utils/generator';
+import { generateWorkout, maxPings, meanAttack } from '../utils/generator';
+import { attackTime, callKey, BETWEEN_BEEPS_MAX, MAX_CALLS } from '../utils/combo';
+import { roundPlan, presetToManual, manualToPreset, manualFromWait } from '../utils/intensity';
+
+// Every setup setting, saved on the device so the screen opens as the user left it.
+const CONFIG_KEY = 'setupConfig';
 
 const DEFAULT_CONFIG = {
   warmup: {minutes: 0, seconds: 5},
@@ -31,177 +43,237 @@ const DEFAULT_CONFIG = {
   restDuration: {minutes: 1, seconds: 0},
   restFirst: false,
   cooldown: {minutes: 0, seconds: 5},
-  style: 'Preset',
-  intensity: 'Medium',
-  combo: '1-2',
-  setBy: 'Time',
+  randomBeeps: true,
+  calls: [newCall()],
+  betweenBeeps: '',
+  focus: '',
+  intensityMode: 'Preset',     // Preset or Manual
+  scope: 'All',                // All, PerRound or WithinRound (Advanced)
+  level: 'M',
+  roundLevels: [],
+  thirdLevels: ['M', 'M', 'M'],
+  manual: manualFromWait(LEVELS.M.wait),
+  roundManual: [],
+  thirdWaits: [LEVELS.M.wait, LEVELS.M.wait, LEVELS.M.wait],
   flashEnabled: true,
   flashStyle: 'Soft',
   vibrationEnabled: true,
 };
 
-const STYLE_LABELS = ['Preset', 'Manual', 'Simple'];
-const SET_BY_LABELS = ['Time', 'Count'];
-
 const TOOLTIPS = {
-  presetIntensity: {
-    title: 'Intensity',
-    text: 'How often the beeps fire. Higher intensity means more beeps.',
-  },
-  presetAttackLength: {
-    title: 'Attack Length',
-    text: 'The execution time: the fixed time you get to attack after each beep, based on the number of punches you throw: 1-2, 3-4 or 5-6+. More punches get more time.',
-  },
-  manualIntensity: {
-    title: 'Intensity',
-    text: 'How often the beeps fire. Set it by Time, the avg. anticipation time before each beep, or by Count, the number of attacks per round. Anticipation is the variable part: each one is random, so the beeps stay unpredictable.',
-  },
-  manualAttackLength: {
-    title: 'Attack Length',
-    text: 'The execution time: the fixed time you get to attack after each beep, in seconds. Set it to fit the number of punches you throw. The variable anticipation time before the next beep comes on top of it.',
-  },
-  manualBetweenBeeps: {
-    title: 'Avg. Time Between Beeps',
-    text: 'The avg. time from one beep to the next: the variable anticipation time plus the fixed execution time. It comes from the settings above.',
+  combo: {
+    title: 'Your combo',
+    text: 'What you throw on the beep, e.g. 1-2, head-body-head or jab-slip-jab. Tap to change the combo length. Hold to type your own, with commas or dashes between moves.',
   },
 };
 
-// The key in a preset map whose value is closest to target.
-const nearestKey = (map, target) =>
-  Object.keys(map).reduce((best, key) =>
-    Math.abs(map[key] - target) < Math.abs(map[best] - target) ? key : best
-  );
+const SCROLL_SETTLE_MS = 350; // wait for a scroll to finish before measuring a spotlight
+const TOUR_STEP_DELAY_MS = 50;
+const TIP_DELAY_MS = 300;     // a tip waits for the section it points at to lay out
+
+// A saved config from an older version may miss fields or hold bad calls.
+function withDefaults(saved) {
+  const config = { ...DEFAULT_CONFIG, ...(saved ?? {}) };
+  if (!Array.isArray(config.calls) || config.calls.length === 0) config.calls = DEFAULT_CONFIG.calls;
+  config.calls = config.calls.slice(0, MAX_CALLS).map(c => ({ ...newCall(), ...c }));
+  return config;
+}
 
 export default function SetupScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const [config, setConfig] = useState(null);
+  const [tooltipKey, setTooltipKey] = useState(null);
 
-  const [warmup, setWarmup] = useState(DEFAULT_CONFIG.warmup);
-  const [rounds, setRounds] = useState(DEFAULT_CONFIG.rounds);
-  const [workDuration, setWorkDuration] = useState(DEFAULT_CONFIG.workDuration);
-  const [restDuration, setRestDuration] = useState(DEFAULT_CONFIG.restDuration);
-  const [restFirst, setRestFirst] = useState(DEFAULT_CONFIG.restFirst);
-  const [cooldown, setCooldown] = useState(DEFAULT_CONFIG.cooldown);
-  const [style, setStyle] = useState(DEFAULT_CONFIG.style);
-  const [intensity, setIntensity] = useState(DEFAULT_CONFIG.intensity);
-  const [combo, setCombo] = useState(DEFAULT_CONFIG.combo);
-  const [setBy, setSetBy] = useState(DEFAULT_CONFIG.setBy);
-  const [wait, setWait] = useState(INTENSITY_MAP[DEFAULT_CONFIG.intensity]);
-  const [execTime, setExecTime] = useState(COMBO_MAP[DEFAULT_CONFIG.combo]);
-  const [attacks, setAttacks] = useState(() => pingsForWait(
-    parseSeconds(DEFAULT_CONFIG.workDuration), wait, execTime,
-  ));
-  const [flashEnabled, setFlashEnabled] = useState(DEFAULT_CONFIG.flashEnabled);
-  const [flashStyle, setFlashStyle] = useState(DEFAULT_CONFIG.flashStyle);
-  const [vibrationEnabled, setVibrationEnabled] = useState(DEFAULT_CONFIG.vibrationEnabled);
-  const [tooltipKey, setTooltipKey] = useState(null); // Used to reset tooltips
-  // Preset or Manual, whichever was used last, so its values carry over to the other.
-  const lastBeepStyleRef = useRef(DEFAULT_CONFIG.style);
+  // ── Load and save ─────────────────────────────────────────
+  const [tour, setTour] = useState(null); // { path, index, restoreBeepsOff }
+  const [tip, setTip] = useState(null);
+  const tipsSeenRef = useRef(null);
 
-  // The tutorial opens by itself the first time; it marks itself seen when it opens.
-  // If storage fails it stays closed, and the link still works.
   useEffect(() => {
-    AsyncStorage.getItem(TUTORIAL_SEEN_KEY)
-      .then((seen) => { if (!seen) navigation.navigate('HowItWorks'); })
-      .catch(() => {});
-  }, [navigation]);
-
-  // With Reduce Motion on, the flash starts as Minimal: the background stays still.
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((reduce) => { if (reduce) setFlashStyle('Minimal'); })
-      .catch(() => {});
+    (async () => {
+      let saved = null;
+      try { saved = JSON.parse(await AsyncStorage.getItem(CONFIG_KEY)); } catch {}
+      const initial = withDefaults(saved);
+      // With Reduce Motion on, the flash starts as Minimal: the background stays still.
+      if (!saved) {
+        try { if (await AccessibilityInfo.isReduceMotionEnabled()) initial.flashStyle = 'Minimal'; } catch {}
+      }
+      // The tour runs by itself the first time. It needs Random Beeps on to
+      // show Focus and Intensity, and turns them back off after.
+      let tourSeen = true;
+      try {
+        tourSeen = !!(await AsyncStorage.getItem(TOUR_SEEN_KEY));
+        tipsSeenRef.current = new Set(JSON.parse(await AsyncStorage.getItem(TIPS_SEEN_KEY)) ?? []);
+      } catch {}
+      if (!tourSeen) {
+        setTour({ path: 'Simple', index: 0, restoreBeepsOff: !initial.randomBeeps });
+        initial.randomBeeps = true;
+        AsyncStorage.setItem(TOUR_SEEN_KEY, '1').catch(() => {});
+      }
+      setConfig(initial);
+    })();
   }, []);
 
-  // Manual: the attacks per round and whether they fit. Nothing is changed to
-  // make them fit; the user is told and Start is blocked.
-  const work = parseSeconds(workDuration);
-  const maxAttacks = maxPings(work, execTime);
-  const manualAttacks = setBy === 'Time'
-    ? Math.min(pingsForWait(work, wait, execTime), maxAttacks)
-    : attacks;
-  let manualError = null;
-  if (maxAttacks < 1) {
-    manualError = `A ${execTime} s attack length doesn't fit a ${formatTime(work)} round.`;
-  } else if (manualAttacks > maxAttacks) {
-    manualError = `${attacks} attacks don't fit a ${formatTime(work)} round with a ${execTime} s attack length (max ${maxAttacks}).`;
-  }
-  const avgAnticipation = setBy === 'Time' ? wait : Math.round(avgWaitFor(work, attacks, execTime));
-  const manualHint = setBy === 'Time'
-    ? `${manualAttacks} attacks per ${formatTime(work)} round`
-    : `Avg. anticipation time: ${avgAnticipation} s`;
+  useEffect(() => {
+    if (config) AsyncStorage.setItem(CONFIG_KEY, JSON.stringify(config)).catch(() => {});
+  }, [config]);
 
-  const changeStyle = (next) => {
-    const from = lastBeepStyleRef.current;
-    if (next === 'Manual' && from === 'Preset') {
-      const presetWait = INTENSITY_MAP[intensity];
-      const presetExec = COMBO_MAP[combo];
-      setWait(presetWait);
-      setExecTime(presetExec);
-      setAttacks(clamp(pingsForWait(work, presetWait, presetExec), ATTACKS));
+  const update = useCallback((patch) => {
+    setConfig(c => ({ ...c, ...(typeof patch === 'function' ? patch(c) : patch) }));
+  }, []);
+
+  // ── Spotlight targets ─────────────────────────────────────
+  // Sections register the views the tour and tips point at.
+  const targetsRef = useRef({});
+  const targetRefs = useRef({});
+  const target = useCallback((key) => {
+    if (!targetRefs.current[key]) {
+      targetRefs.current[key] = (el) => { targetsRef.current[key] = el; };
     }
-    if (next === 'Preset' && from === 'Manual') {
-      const manualWait = setBy === 'Time' ? wait : avgWaitFor(work, attacks, execTime);
-      setIntensity(nearestKey(INTENSITY_MAP, manualWait));
-      setCombo(nearestKey(COMBO_MAP, execTime));
-    }
-    if (next !== 'Simple') lastBeepStyleRef.current = next;
-    setStyle(next);
+    return targetRefs.current[key];
+  }, []);
+
+  const containerRef = useRef(null);
+  const scrollRef = useRef(null);
+  const scrollYRef = useRef(0);
+  const [frame, setFrame] = useState(null); // the container's size
+  const [spot, setSpot] = useState(null);
+
+  const mark = tour ? tourSteps(tour.path)[tour.index] : tip ? TIPS[tip] : null;
+
+  // Scroll the mark's target into view, then measure it for the spotlight.
+  useEffect(() => {
+    if (!mark || !frame) return;
+    setSpot(null);
+    const timers = [];
+    const later = (fn, ms) => timers.push(setTimeout(fn, ms));
+
+    later(() => {
+      const el = [].concat(mark.target).map(k => targetsRef.current[k]).find(Boolean);
+      if (!el) return setSpot({ none: true });
+      // The container is measured with the target each time: the screen may
+      // still be sliding in, and only their positions relative to each other count.
+      const measure = (done) => containerRef.current?.measureInWindow((cx, cy) => {
+        el.measureInWindow((x, y, width, height) => done({ x: x - cx, y: y - cy, width, height }));
+      });
+      measure(({ y, height }) => {
+        const viewHeight = frame.height - insets.top;
+        const contentY = y - insets.top + scrollYRef.current;
+        const fits = height < viewHeight - 160;
+        const scrollTo = Math.max(0, fits ? contentY - (viewHeight - height) / 2 : contentY - 80);
+        const moved = Math.abs(scrollTo - scrollYRef.current) > 4;
+        if (moved) scrollRef.current?.scrollTo({ y: scrollTo, animated: true });
+        later(() => measure(setSpot), moved ? SCROLL_SETTLE_MS : 0);
+      });
+    }, tour ? TOUR_STEP_DELAY_MS : TIP_DELAY_MS);
+
+    return () => timers.forEach(clearTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tour?.path, tour?.index, tip, frame, insets.top]);
+
+
+  // ── Tour ──────────────────────────────────────────────────
+  const startTour = () => {
+    setTip(null);
+    setTour({ path: 'Simple', index: 0, restoreBeepsOff: !config.randomBeeps });
+    if (!config.randomBeeps) update({ randomBeeps: true });
   };
 
-  // The value being switched to starts from the one it replaces.
-  const changeSetBy = (next) => {
-    if (next === setBy) return;
-    if (next === 'Count') setAttacks(clamp(manualAttacks, ATTACKS));
-    else setWait(clamp(Math.round(avgWaitFor(work, attacks, execTime)), WAITS));
-    setSetBy(next);
+  const endTour = () => {
+    if (tour?.restoreBeepsOff) update({ randomBeeps: false });
+    setTour(null);
+    setSpot(null);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  const stepCount = tour ? tourSteps(tour.path).length : 0;
+  const nextStep = () => {
+    if (tour.index >= stepCount - 1) endTour();
+    else setTour({ ...tour, index: tour.index + 1 });
+  };
+  const prevStep = () => setTour({ ...tour, index: Math.max(0, tour.index - 1) });
+  const choosePath = (path) => setTour({ ...tour, ...switchTourPath(tour, path) });
+
+  // ── First-time tips ───────────────────────────────────────
+  const showTip = useCallback((key) => {
+    const seen = tipsSeenRef.current;
+    if (tour || !seen || seen.has(key)) return;
+    seen.add(key);
+    AsyncStorage.setItem(TIPS_SEEN_KEY, JSON.stringify([...seen])).catch(() => {});
+    setTip(key);
+  }, [tour]);
+
+  if (!config) return <View style={styles.container} />;
+
+  // ── Derived values ────────────────────────────────────────
+  const rounds = parseInt(config.rounds) || 1;
+  const work = parseSeconds(config.workDuration);
+  const beepTypes = config.calls.map((call, i) => ({
+    label: callKey(i, config.calls.length),
+    attack: attackTime(call),
+    combo: call.combo.trim(),
+  }));
+  const attack = meanAttack(beepTypes);
+  const { randomBeeps } = config;
+
+  const changeMode = (mode) => {
+    if (mode === config.intensityMode) return;
+    update(c => ({
+      intensityMode: mode,
+      ...(mode === 'Manual' ? presetToManual(c) : manualToPreset(c, work, attack)),
+    }));
+    if (mode === 'Manual') showTip('manual');
   };
 
   const handleStart = () => {
-    const rest = parseSeconds(restDuration);
-    const r = parseInt(rounds) || 1;
-    const warm = parseSeconds(warmup);
-    const cool = parseSeconds(cooldown);
-    const manual = style === 'Manual';
-    const randomBeeps = style !== 'Simple';
-
     if (work < 10) {
       Alert.alert('Invalid', 'Work duration must be at least 10 seconds.');
       return;
     }
-    if (manual && manualError) {
-      Alert.alert("Attacks don't fit", manualError);
+    if (randomBeeps && maxPings(work, attack) < 1) {
+      Alert.alert("Combos don't fit", `A ${formatTime(work)} round is too short for your combos. Make the round longer or the combos shorter.`);
       return;
     }
 
     const workout = generateWorkout({
-      warmup: warm,
-      rounds: r,
+      warmup: parseSeconds(config.warmup),
+      rounds,
       workDuration: work,
-      restDuration: rest,
-      restFirst,
-      cooldown: cool,
-      avgFrequency: INTENSITY_MAP[intensity],
-      minGap: manual ? execTime : COMBO_MAP[combo],
-      pingCount: manual ? manualAttacks : undefined,
+      restDuration: parseSeconds(config.restDuration),
+      restFirst: config.restFirst,
+      cooldown: parseSeconds(config.cooldown),
+      beepTypes,
+      roundPlans: Array.from({ length: rounds }, (_, i) => roundPlan(config, i, work, attack)),
       randomBeeps,
     });
 
-    // Flash and vibration only fire on the random beeps, so Simple turns them off.
+    // Flash and vibration only fire on the random beeps, so they're off without them.
     navigation.navigate('Running', {
       workout,
-      flashEnabled: randomBeeps && flashEnabled,
-      flashStyle,
-      vibrationEnabled: randomBeeps && vibrationEnabled,
+      flashEnabled: randomBeeps && config.flashEnabled,
+      flashStyle: config.flashStyle,
+      vibrationEnabled: randomBeeps && config.vibrationEnabled,
+      focusText: (randomBeeps ? config.betweenBeeps : config.focus).trim(),
     });
   };
 
+  const { restFirst } = config;
+  const setField = (key) => (value) => update({ [key]: value });
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: 40 + insets.bottom }]} keyboardShouldPersistTaps="handled">
+    <View ref={containerRef} onLayout={(e) => setFrame(e.nativeEvent.layout)} style={[styles.container, { paddingTop: insets.top }]}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={[styles.scroll, { paddingBottom: 40 + insets.bottom }]}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+        onScroll={(e) => { scrollYRef.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
+      >
 
         <TouchableOpacity
           style={styles.howItWorks}
-          onPress={() => navigation.navigate('HowItWorks')}
+          onPress={startTour}
           accessibilityRole="button"
         >
           <Text style={styles.howItWorksText}>How it works</Text>
@@ -209,15 +281,15 @@ export default function SetupScreen({ navigation }) {
 
         {/* ── Section 1: Round Structure ─────────────────────── */}
         <Text maxFontSizeMultiplier={3} style={styles.sectionLabel}>Round Structure</Text>
-        <View style={styles.card}>
+        <View style={styles.card} ref={target('structure')} collapsable={false}>
 
           {/* Warmup */}
           <View style={styles.secondaryRow}>
             <Text maxFontSizeMultiplier={2.5} style={styles.secondaryLabel}>Warm Up</Text>
             <DurationPicker
               label={''}
-              value={warmup}
-              onChange={setWarmup}
+              value={config.warmup}
+              onChange={setField('warmup')}
               color={'#6B7280'}
               variant={"peripheral"}
             />
@@ -230,26 +302,26 @@ export default function SetupScreen({ navigation }) {
             <View style={styles.roundsBlock}>
               <Text maxFontSizeMultiplier={3} numberOfLines={1} style={styles.inputLabel}>Rounds</Text>
               <RoundsPicker
-                value={rounds}
-                onChangeText={setRounds}
+                value={config.rounds}
+                onChangeText={setField('rounds')}
               />
             </View>
 
             {/* Work ↔ Rest horizontal layout */}
             <View style={styles.workRestRow}>
               {restFirst ? (
-                <DurationPicker label="Rest" value={restDuration} onChange={setRestDuration} color="#22C55E" />
+                <DurationPicker label="Rest" value={config.restDuration} onChange={setField('restDuration')} color="#22C55E" />
               ) : (
-                <DurationPicker label="Work" value={workDuration} onChange={setWorkDuration} color="#EF4444" />
+                <DurationPicker label="Work" value={config.workDuration} onChange={setField('workDuration')} color="#EF4444" />
               )}
-              <TouchableOpacity style={styles.swapButton} onPress={() => setRestFirst(v => !v)}>
+              <TouchableOpacity style={styles.swapButton} onPress={() => update({ restFirst: !restFirst })}>
                 <Text maxFontSizeMultiplier={2} style={styles.swapIcon}>↔</Text>
               </TouchableOpacity>
               {restFirst ? (
-                <DurationPicker label="Work" value={workDuration} onChange={setWorkDuration} color="#EF4444" 
+                <DurationPicker label="Work" value={config.workDuration} onChange={setField('workDuration')} color="#EF4444"
                 variant={"main"}/>
               ) : (
-                <DurationPicker label="Rest" value={restDuration} onChange={setRestDuration} color="#22C55E" 
+                <DurationPicker label="Rest" value={config.restDuration} onChange={setField('restDuration')} color="#22C55E"
                 variant={"main"}/>
               )}
             </View>
@@ -261,145 +333,109 @@ export default function SetupScreen({ navigation }) {
           <View style={styles.secondaryRow}>
             <Text maxFontSizeMultiplier={2.5} style={styles.secondaryLabel}>Cool Down</Text>
             <DurationPicker
-              style={styles.secondaryInput}
-              value={cooldown}
-              onChange={setCooldown}
+              value={config.cooldown}
+              onChange={setField('cooldown')}
               color={'#6B7280'}
               variant={"peripheral"}
             />
           </View>
         </View>
 
-        {/* ── Section 2: Workout Style ────────────────────────────── */}
-        <Text maxFontSizeMultiplier={3} style={styles.sectionLabel}>Workout Style</Text>
-        <View style={styles.card}>
-          <Tabs labels={STYLE_LABELS} value={style} onChange={changeStyle} />
-
-          {style === 'Preset' && (
-            <View style={styles.pickerContainer}>
-              <Field title="Intensity" onHelp={() => setTooltipKey('presetIntensity')}>
-                <View style={styles.row}>
-                  <Segments labels={INTENSITY_LABELS} value={intensity} onChange={setIntensity} />
-                </View>
-              </Field>
-
-              <View style={styles.fieldDivider} />
-
-              <Field title="Attack Length" onHelp={() => setTooltipKey('presetAttackLength')}>
-                <View style={styles.row}>
-                  <Segments labels={COMBO_LABELS} value={combo} onChange={setCombo} />
-                </View>
-              </Field>
+        {/* ── Section 2: Random Beeps ─────────────────────────── */}
+        <Text maxFontSizeMultiplier={3} style={styles.sectionLabel}>Random Beeps</Text>
+        <View style={styles.card} ref={target('beepsToggle')} collapsable={false}>
+          <View style={styles.beepsToggleRow}>
+            <Text style={styles.toggleLabel}>{randomBeeps ? 'On' : 'Off'}</Text>
+            <Switch
+              value={randomBeeps}
+              onValueChange={setField('randomBeeps')}
+              accessibilityLabel="Random beeps"
+            />
+          </View>
+          {!randomBeeps && (
+            <View style={styles.offBlock}>
+              <Text style={styles.offNote}>
+                A plain interval timer with no random beeps. You'll only hear beeps for rounds, rests and countdowns.
+              </Text>
+              <Text style={styles.textLabel}>Focus</Text>
+              <TextInput
+                style={styles.textBox}
+                value={config.focus}
+                onChangeText={setField('focus')}
+                placeholder="e.g. footwork and defense"
+                placeholderTextColor="#9CA3AF"
+                maxLength={BETWEEN_BEEPS_MAX}
+                returnKeyType="done"
+                accessibilityLabel="Focus"
+              />
             </View>
-          )}
-
-          {style === 'Manual' && (
-            <View style={styles.pickerContainer}>
-              {/* Intensity: by avg. anticipation time, or by attacks per round */}
-              <Field title="Intensity" onHelp={() => setTooltipKey('manualIntensity')}>
-                <View style={styles.row}>
-                  <Segments labels={SET_BY_LABELS} value={setBy} onChange={changeSetBy} />
-                </View>
-                <View style={styles.valueRow}>
-                  {setBy === 'Time' ? (
-                    <>
-                      <Text style={styles.fieldLabel}>Avg. Anticipation Time</Text>
-                      <NumberPicker
-                        items={WAITS}
-                        value={wait}
-                        onChange={setWait}
-                        formatLabel={(n) => `${n} s`}
-                        accessibilityLabel="Average anticipation time"
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <Text style={styles.fieldLabel}>Attacks per Round</Text>
-                      <NumberPicker
-                        items={ATTACKS}
-                        value={attacks}
-                        onChange={setAttacks}
-                        accessibilityLabel="Attacks per round"
-                      />
-                    </>
-                  )}
-                </View>
-                {manualError
-                  ? <Text style={styles.errorText}>{manualError}</Text>
-                  : <Text style={styles.hintText}>{manualHint}</Text>}
-              </Field>
-
-              <View style={styles.fieldDivider} />
-
-              {/* Attack Length: the fixed execution time after each beep */}
-              <Field title="Attack Length" onHelp={() => setTooltipKey('manualAttackLength')}>
-                <View style={styles.valueRow}>
-                  <Text style={styles.fieldLabel}>Execution Time</Text>
-                  <NumberPicker
-                    items={EXEC_TIMES}
-                    value={execTime}
-                    onChange={setExecTime}
-                    formatLabel={(n) => `${n} s`}
-                    accessibilityLabel="Execution time"
-                  />
-                </View>
-              </Field>
-
-              {/* Each gap between beeps is the anticipation time plus the execution time */}
-              {!manualError && (
-                <>
-                  <View style={styles.fieldDivider} />
-                  <Field title="Avg. Time Between Beeps" onHelp={() => setTooltipKey('manualBetweenBeeps')}>
-                    <View style={styles.valueRow}>
-                      <Text style={styles.fieldLabel}>Variable Anticipation + Fixed Execution</Text>
-                      <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.valueDisplay, styles.valueDerived]}>
-                        {avgAnticipation + execTime} s
-                      </Text>
-                    </View>
-                  </Field>
-                </>
-              )}
-            </View>
-          )}
-
-          {style === 'Simple' && (
-            <Text style={styles.simpleNote}>
-              A plain interval timer with no random beeps. You'll only hear beeps for rounds, rests and countdowns.
-            </Text>
           )}
         </View>
 
+        {randomBeeps && (
+          <>
+            <Text maxFontSizeMultiplier={3} style={styles.sectionLabel}>Focus</Text>
+            <View ref={target('focus')} collapsable={false}>
+              <FocusSection
+                calls={config.calls}
+                onChangeCalls={setField('calls')}
+                betweenBeeps={config.betweenBeeps}
+                onChangeBetween={setField('betweenBeeps')}
+                onHelp={setTooltipKey}
+                onCallAdded={() => showTip('calls')}
+                target={target}
+              />
+            </View>
+
+            <Text maxFontSizeMultiplier={3} style={styles.sectionLabel}>Intensity</Text>
+            <View ref={target('intensity')} collapsable={false}>
+              <IntensitySection
+                config={config}
+                update={update}
+                rounds={rounds}
+                work={work}
+                attack={attack}
+                onModeChange={changeMode}
+                onTip={showTip}
+                target={target}
+              />
+            </View>
+          </>
+        )}
+
         {/* ── Section 3: Feedback ─────────────────────────────── */}
-        {/* Flash and vibration only fire on the random beeps, so Simple greys them out */}
+        {/* Flash and vibration only fire on the random beeps, so they grey out without them */}
         <Text maxFontSizeMultiplier={3} style={styles.sectionLabel}>Feedback</Text>
-        <View style={[styles.card, style === 'Simple' && styles.pickerContainerDisabled]}>
-          <View style={styles.toggleRow}>
+        <View style={[styles.card, !randomBeeps && styles.disabled]}>
+          <View style={[styles.toggleRow, styles.toggleRowFirst]}>
             <Text style={styles.toggleLabel}>Screen Flash</Text>
             <Switch
-              value={flashEnabled}
-              onValueChange={setFlashEnabled}
-              disabled={style === 'Simple'}
+              value={config.flashEnabled}
+              onValueChange={setField('flashEnabled')}
+              disabled={!randomBeeps}
             />
           </View>
-          {flashEnabled && style !== 'Simple' && (
+          {config.flashEnabled && randomBeeps && (
             <View style={styles.flashStyleRow}>
-              <Segments labels={FLASH_STYLES} value={flashStyle} onChange={setFlashStyle} />
+              <Segments labels={FLASH_STYLES} value={config.flashStyle} onChange={setField('flashStyle')} />
             </View>
           )}
           <View style={styles.toggleRow}>
             <Text style={styles.toggleLabel}>Vibration</Text>
             <Switch
-              value={vibrationEnabled}
-              onValueChange={setVibrationEnabled}
-              disabled={style === 'Simple'}
+              value={config.vibrationEnabled}
+              onValueChange={setField('vibrationEnabled')}
+              disabled={!randomBeeps}
             />
           </View>
         </View>
 
         {/* ── Start ─────────────────────────────────────────── */}
-        <TouchableOpacity style={styles.startButton} onPress={handleStart}>
-          <Text style={styles.startButtonText}>ENTER</Text>
-        </TouchableOpacity>
+        <View ref={target('start')} collapsable={false} style={styles.startWrap}>
+          <TouchableOpacity style={styles.startButton} onPress={handleStart}>
+            <Text style={styles.startButtonText}>ENTER</Text>
+          </TouchableOpacity>
+        </View>
         <Modal visible={tooltipKey !== null} transparent animationType="fade">
           <TouchableOpacity style={styles.tooltipOverlay} activeOpacity={1} onPress={() => setTooltipKey(null)}>
             <View style={styles.tooltipBox}>
@@ -412,6 +448,30 @@ export default function SetupScreen({ navigation }) {
           </TouchableOpacity>
         </Modal>
       </ScrollView>
+
+      {/* ── Tour and tips ─────────────────────────────────────── */}
+      {mark && frame && (
+        <Spotlight
+          rect={spot}
+          screen={{ width: frame.width, height: frame.height, top: insets.top, bottom: insets.bottom }}
+          caption={mark.caption}
+          onNext={tour ? nextStep : () => setTip(null)}
+        >
+          {tour ? (
+            <TourControls
+              path={tour.path}
+              onPath={choosePath}
+              index={tour.index}
+              count={stepCount}
+              onBack={prevStep}
+              onSkip={endTour}
+              onNext={nextStep}
+            />
+          ) : (
+            <TipControls onDone={() => setTip(null)} />
+          )}
+        </Spotlight>
+      )}
     </View>
   );
 }
@@ -419,126 +479,6 @@ export default function SetupScreen({ navigation }) {
 const MINUTES = Array.from({ length: 61 }, (_, i) => i);
 const SECONDS = Array.from({ length: 60 }, (_, i) => i);
 const ROUNDS = Array.from({ length: 50 }, (_, i) => i + 1);
-const WAITS = Array.from({ length: 30 }, (_, i) => i + 1);
-const EXEC_TIMES = Array.from({ length: 10 }, (_, i) => i + 1);
-const ATTACKS = Array.from({ length: 200 }, (_, i) => i + 1);
-
-const TAB_STRIP_COLOR = '#E5E7EB';
-const TAB_RADIUS = 10;
-
-// Keeps a value inside a picker's range, so the wheel can show it.
-const clamp = (value, items) => Math.min(items[items.length - 1], Math.max(items[0], value));
-
-function Segments({ labels, value, onChange }) {
-  return (
-    <View style={styles.segmentRow}>
-      {labels.map(label => (
-        <TouchableOpacity
-          key={label}
-          style={[styles.segmentButton, value === label && styles.segmentButtonActive]}
-          onPress={() => onChange(label)}
-        >
-          <Text
-          numberOfLines={1}
-          maxFontSizeMultiplier={2.5}
-          style={[styles.segmentButtonText, value === label && styles.segmentButtonTextActive]}>
-            {label}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-}
-
-// A Workout Style field: heading and help button above its controls.
-function Field({ title, onHelp, children }) {
-  return (
-    <View style={styles.field}>
-      <View style={styles.fieldHeader}>
-        <Text style={styles.fieldHeading}>{title}</Text>
-        <TouchableOpacity onPress={onHelp}>
-          <Text style={styles.tooltipTrigger}>?</Text>
-        </TouchableOpacity>
-      </View>
-      {children}
-    </View>
-  );
-}
-
-// Browser-style tabs: the chosen tab is the card's colour and runs into the
-// body below, with curved corners where it meets the body.
-function Tabs({ labels, value, onChange }) {
-  return (
-    <View style={styles.tabStrip} accessibilityRole="tablist">
-      {labels.map((label, i) => {
-        const active = value === label;
-        // Dividers only sit between two unchosen tabs.
-        const divider = i > 0 && !active && labels[i - 1] !== value;
-        return (
-          <React.Fragment key={label}>
-            {i > 0 && <View style={[styles.tabDivider, !divider && styles.tabDividerHidden]} />}
-            <TouchableOpacity
-              style={[styles.tab, active && styles.tabActive]}
-              onPress={() => onChange(label)}
-              activeOpacity={active ? 1 : 0.6}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-            >
-              {active && (
-                <>
-                  <View style={[styles.tabFlare, styles.tabFlareLeft]}>
-                    <View style={[styles.tabFlareCut, styles.tabFlareCutLeft]} />
-                  </View>
-                  <View style={[styles.tabFlare, styles.tabFlareRight]}>
-                    <View style={[styles.tabFlareCut, styles.tabFlareCutRight]} />
-                  </View>
-                </>
-              )}
-              <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                style={[styles.tabText, active && styles.tabTextActive]}
-              >
-                {label}
-              </Text>
-            </TouchableOpacity>
-          </React.Fragment>
-        );
-      })}
-    </View>
-  );
-}
-
-function NumberPicker({ items, value, onChange, formatLabel = String, accessibilityLabel }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const insets = useSafeAreaInsets();
-
-  return (
-    <View>
-      <TouchableOpacity onPress={() => setIsOpen(true)}>
-        <Text numberOfLines={1} adjustsFontSizeToFit style={styles.valueDisplay}>
-          {formatLabel(value)}
-        </Text>
-      </TouchableOpacity>
-      <Modal visible={isOpen} transparent animationType="none">
-        <View style={styles.pickerModalOverlay}>
-          <View style={[styles.pickerModalSheet, { paddingBottom: 24 + insets.bottom }]}>
-            <TouchableOpacity style={styles.pickerModalDone} onPress={() => setIsOpen(false)}>
-              <Text style={styles.pickerModalDoneText}>Done</Text>
-            </TouchableOpacity>
-            <WheelPicker
-              items={items}
-              value={value}
-              onChange={onChange}
-              formatLabel={formatLabel}
-              accessibilityLabel={accessibilityLabel}
-            />
-          </View>
-        </View>
-      </Modal>
-    </View>
-  );
-}
 
 function DurationPicker({ label, color, value, onChange, variant }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -558,7 +498,7 @@ function DurationPicker({ label, color, value, onChange, variant }) {
               value={value.minutes}
               onChange={(m) => onChange({ ...value, minutes: m })}
               formatLabel={(n) => `${n}m`}
-              accessibilityLabel={`${label} minutes`.trim()}
+              accessibilityLabel={`${label ?? ''} minutes`.trim()}
               style={{ flex: 1 }}
             />
             <WheelPicker
@@ -566,7 +506,7 @@ function DurationPicker({ label, color, value, onChange, variant }) {
               value={value.seconds}
               onChange={(s) => onChange({ ...value, seconds: s })}
               formatLabel={(n) => `${n}s`}
-              accessibilityLabel={`${label} seconds`.trim()}
+              accessibilityLabel={`${label ?? ''} seconds`.trim()}
               style={{ flex: 1 }}
             />
           </View>
@@ -658,6 +598,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
   },
+  disabled: {
+    opacity: 0.35,
+  },
   divider: {
     height: 1,
     backgroundColor: '#E5E7EB',
@@ -677,27 +620,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#374151',
     flex: 4,
-  },
-  secondaryInputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  secondaryInput: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    fontSize: 15,
-    width: 60,
-    textAlign: 'center',
-    color: '#111827',
-  },
-  secondaryUnit: {
-    fontSize: 13,
-    color: '#6B7280',
-    width: 44,
   },
 
   // Rounds row
@@ -752,28 +674,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 4,
   },
-  durationInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  durationInput: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    fontSize: 15,
-    fontWeight: '600',
-    width: 52,
-    textAlign: 'center',
-    color: '#111827',
-    backgroundColor: '#FFFFFF',
-  },
-  durationUnit: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
   swapButton: {
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -787,171 +687,46 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
 
-  // Intensity pickers
-  pickerContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    gap: 20,
-  },
-  pickerContainerDisabled: {
-    opacity: 0.35,
-  },
-  segmentRow: {
-    flex: 1,
+  // Random Beeps
+  beepsToggleRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 6,
-    minWidth: 180,
-  },
-  segmentButton: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 'auto',
-    paddingVertical: 11,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: '#D1D5DB',
-    alignItems: 'center',
-  },
-  segmentButtonActive: {
-    borderColor: '#111827',
-    backgroundColor: '#111827',
-  },
-  segmentButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  segmentButtonTextActive: {
-    color: '#FFFFFF',
-  },
-
-  // Workout Style tabs
-  tabStrip: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    backgroundColor: TAB_STRIP_COLOR,
-    paddingHorizontal: TAB_RADIUS,
-    paddingTop: 6,
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderTopLeftRadius: TAB_RADIUS,
-    borderTopRightRadius: TAB_RADIUS,
-  },
-  tabActive: {
-    backgroundColor: '#FFFFFF',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  tabTextActive: {
-    color: '#111827',
-  },
-  tabDivider: {
-    width: 1,
-    marginVertical: 10,
-    backgroundColor: '#C4C8CE',
-  },
-  tabDividerHidden: {
-    backgroundColor: 'transparent',
-  },
-  // A white square with a strip-coloured quarter circle on top, at each
-  // bottom corner of the chosen tab, makes the curve into the body.
-  tabFlare: {
-    position: 'absolute',
-    bottom: 0,
-    width: TAB_RADIUS,
-    height: TAB_RADIUS,
-    backgroundColor: '#FFFFFF',
-  },
-  tabFlareLeft: {
-    left: -TAB_RADIUS,
-  },
-  tabFlareRight: {
-    right: -TAB_RADIUS,
-  },
-  tabFlareCut: {
-    flex: 1,
-    backgroundColor: TAB_STRIP_COLOR,
-  },
-  tabFlareCutLeft: {
-    borderBottomRightRadius: TAB_RADIUS,
-  },
-  tabFlareCutRight: {
-    borderBottomLeftRadius: TAB_RADIUS,
-  },
-  row: {
-    flexDirection: 'row',
-  },
-  simpleNote: {
     paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingVertical: 10,
+  },
+  offBlock: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 16,
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  offNote: {
+    paddingTop: 12,
+    paddingBottom: 8,
     fontSize: 15,
     color: '#374151',
   },
-
-  // Preset and Manual fields
-  field: {
-    gap: 10,
-  },
-  fieldHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  fieldHeading: {
+  textLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#6B7280',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    flexShrink: 1,
   },
-  fieldLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6B7280',
-    flexShrink: 1,
-  },
-  fieldDivider: {
-    height: 1,
-    backgroundColor: '#E5E7EB',
-  },
-  valueRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  valueDisplay: {
-    fontSize: 20,
-    fontWeight: '600',
+  textBox: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
     color: '#111827',
-    paddingVertical: 4,
-    textAlign: 'right',
-    minWidth: 48,
+    backgroundColor: '#FFFFFF',
   },
-  // A value worked out from the fields above, not a picker.
-  valueDerived: {
-    color: '#6B7280',
-  },
-  hintText: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  errorText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#EF4444',
-  },
+
   // Toggles
   toggleRow: {
     flexDirection: 'row',
@@ -961,6 +736,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
+  },
+  toggleRowFirst: {
+    borderTopWidth: 0,
   },
   toggleLabel: {
     fontSize: 15,
@@ -973,8 +751,10 @@ const styles = StyleSheet.create({
   },
 
   // Start button
-  startButton: {
+  startWrap: {
     marginTop: 32,
+  },
+  startButton: {
     backgroundColor: '#111827',
     borderRadius: 14,
     paddingVertical: 18,
@@ -987,13 +767,6 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
 
-  peripheralRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
   peripheralValue: {
     flex: 1,
   },
@@ -1061,12 +834,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     opacity: 0.7,
     lineHeight: 20,
-  },
-  tooltipTrigger: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#9CA3AF',
-    paddingHorizontal: 6,
-    paddingVertical: 4,
   },
 });

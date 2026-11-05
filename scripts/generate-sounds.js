@@ -2,7 +2,7 @@
  * Generates WAV audio files for Randoro v2.
  *
  * Sound types (frequencies and durations are in the `files` map below):
- *   ping.wav        — single beep            (interval cue)
+ *   classic.wav     — single beep            (the Classic call)
  *   double.wav      — two beeps              (work/round start)
  *   double_rest.wav — two lower, longer beeps (rest start)
  *   warmup.wav      — three rising beeps     (warmup start)
@@ -163,7 +163,7 @@ fs.mkdirSync(outDir, { recursive: true });
 const ROUND_START_HZ = 625;
 
 const files = {
-  'ping.wav':        [ { freq: 750, duration: 0.10 } ],
+  'classic.wav':     [ { freq: 750, duration: 0.10 } ],
   'double.wav':      [ { freq: ROUND_START_HZ, duration: 0.10 }, { freq: ROUND_START_HZ, duration: 0.10 } ],
   'double_rest.wav': [ { freq: 500, duration: 0.20 }, { freq: 500, duration: 0.20 } ],
   'warmup.wav':      [ { freq: 500, duration: 0.20 }, { freq: 510, duration: 0.15 }, { freq: 600, duration: 0.10 } ],
