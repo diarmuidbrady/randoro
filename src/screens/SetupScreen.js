@@ -76,6 +76,13 @@ const MAIN_SECTIONS = ['structure', 'beeps'];
 const SUB_SECTIONS = ['focus', 'intensity', 'feedback'];
 const GROUPS = [MAIN_SECTIONS, SUB_SECTIONS];
 
+// The sections on a tour step: the ones it opens, the rest collapsed. A step
+// that opens none leaves them as they are.
+function tourCollapsed(step, collapsed) {
+  if (!step.open) return collapsed;
+  return Object.fromEntries([...MAIN_SECTIONS, ...SUB_SECTIONS].map(key => [key, !step.open.includes(key)]));
+}
+
 const TOOLTIPS = {
   combo: {
     title: 'Your combo',
@@ -133,7 +140,7 @@ export default function SetupScreen({ navigation }) {
       if (!tourSeen) {
         setTour({ path: 'Simple', index: 0, restoreBeepsOff: !initial.randomBeeps, restoreCollapsed: initial.collapsed });
         initial.randomBeeps = true;
-        initial.collapsed = {};
+        initial.collapsed = tourCollapsed(tourSteps('Simple')[0], initial.collapsed);
         AsyncStorage.setItem(TOUR_SEEN_KEY, '1').catch(() => {});
       }
       setConfig(initial);
@@ -199,11 +206,17 @@ export default function SetupScreen({ navigation }) {
 
 
   // ── Tour ──────────────────────────────────────────────────
-  // The tour opens every section, and puts them back as they were after.
+  // Each step opens its own sections and closes the rest, as tapping their
+  // headings would. They go back as they were after.
   const startTour = () => {
     setTip(null);
     setTour({ path: 'Simple', index: 0, restoreBeepsOff: !config.randomBeeps, restoreCollapsed: config.collapsed });
-    update({ randomBeeps: true, collapsed: {} });
+    update({ randomBeeps: true, collapsed: tourCollapsed(tourSteps('Simple')[0], config.collapsed) });
+  };
+
+  const goToStep = (next) => {
+    setTour(next);
+    update(c => ({ collapsed: tourCollapsed(tourSteps(next.path)[next.index], c.collapsed) }));
   };
 
   const endTour = () => {
@@ -217,10 +230,10 @@ export default function SetupScreen({ navigation }) {
   const stepCount = tour ? tourSteps(tour.path).length : 0;
   const nextStep = () => {
     if (tour.index >= stepCount - 1) endTour();
-    else setTour({ ...tour, index: tour.index + 1 });
+    else goToStep({ ...tour, index: tour.index + 1 });
   };
-  const prevStep = () => setTour({ ...tour, index: Math.max(0, tour.index - 1) });
-  const choosePath = (path) => setTour({ ...tour, ...switchTourPath(tour, path) });
+  const prevStep = () => goToStep({ ...tour, index: Math.max(0, tour.index - 1) });
+  const choosePath = (path) => goToStep({ ...tour, ...switchTourPath(tour, path) });
 
   // ── First-time tips ───────────────────────────────────────
   const showTip = useCallback((key) => {

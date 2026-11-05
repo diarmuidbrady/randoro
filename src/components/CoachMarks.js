@@ -11,18 +11,23 @@ export const TOUR_PATHS = ['Simple', 'Advanced'];
 
 // The main steps, each with a detail branch the Advanced path also visits.
 // A target is the key a section registers with SetupScreen's target(); a list
-// falls back to the next key when one isn't on screen.
+// falls back to the next key when one isn't on screen. `open` is the sections
+// open on that step, the rest collapsed, as if the user had tapped there; its
+// details keep them, and a step without one leaves the sections as they are.
 const MAIN_STEPS = [
   {
     target: 'structure',
+    open: ['structure'],
     caption: "It's an interval timer: set your rounds, work and rest here.",
   },
   {
     target: 'beepsToggle',
+    open: ['beeps'],
     caption: 'Turn Random Beeps on for reaction training, or off for a plain timer.',
   },
   {
     target: 'focus',
+    open: ['beeps', 'focus'],
     caption: 'This is your combo: what you throw on each beep.',
     detail: [
       { target: 'speaker', caption: 'Tap the speaker to hear the call.' },
@@ -35,6 +40,7 @@ const MAIN_STEPS = [
   },
   {
     target: 'intensity',
+    open: ['beeps', 'intensity'],
     caption: 'This is how hard: Low, Medium or High sets how often the beeps come.',
     detail: [
       { target: 'intensityTabs', caption: 'Manual sets the Avg. wait or the Calls per round instead.' },
@@ -52,7 +58,7 @@ const MAIN_STEPS = [
 export function tourSteps(path) {
   return MAIN_STEPS.flatMap((step, main) => [
     { ...step, main },
-    ...(path === 'Advanced' ? (step.detail ?? []).map(d => ({ ...d, main })) : []),
+    ...(path === 'Advanced' ? (step.detail ?? []).map(d => ({ ...d, main, open: step.open })) : []),
   ]);
 }
 

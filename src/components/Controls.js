@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, PixelRatio } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
-import { UNSELECTED_FILL, ACCENT, ACCENT_FACE } from '../constants/theme';
+import { UNSELECTED_FILL, ACCENT } from '../constants/theme';
 
 const SEGMENT_RADIUS = 10;
 const SEGMENT_BORDER = 1.5;
@@ -189,8 +189,8 @@ export function Segments({ labels, value, onChange, colors, dark, renderLabel = 
   );
 }
 
-// Tabs for branches (Preset / Manual): the chosen one has a light peach face
-// and an accent bar under it, on the same surface as its body.
+// Tabs for branches (Preset / Manual): the chosen one has accent text and an
+// accent bar under it, on the same surface as its body.
 export function Tabs({ labels, value, onChange }) {
   return (
     <View style={styles.tabBar} accessibilityRole="tablist">
@@ -199,7 +199,7 @@ export function Tabs({ labels, value, onChange }) {
         return (
           <TouchableOpacity
             key={label}
-            style={[styles.tab, active && styles.tabActive]}
+            style={styles.tab}
             onPress={() => onChange(label)}
             activeOpacity={active ? 1 : 0.6}
             accessibilityRole="tab"
@@ -302,11 +302,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingTop: 10,
-  },
-  tabActive: {
-    backgroundColor: ACCENT_FACE,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
   },
   tabText: {
     fontSize: 14,
