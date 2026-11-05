@@ -9,20 +9,27 @@ const REPEAT_START_MS = 150;  // first repeat interval...
 const REPEAT_MIN_MS = 40;     // ...speeding up to this
 const REPEAT_SPEEDUP = 0.85;
 
-// Calls onStep on press, then again and faster while held.
-export function useRepeat(onStep) {
+// Calls onStep on press, then again and faster while held. Repeating stops
+// when the value reaches its limit (disabled), and the press handlers stay
+// attached so the release is always heard.
+export function useRepeat(onStep, disabled) {
   const stepRef = useRef(onStep);
   stepRef.current = onStep;
+  const disabledRef = useRef(disabled);
+  disabledRef.current = disabled;
   const timerRef = useRef(null);
 
   const stop = () => clearTimeout(timerRef.current);
   useEffect(() => stop, []);
+  useEffect(() => { if (disabled) stop(); }, [disabled]);
 
   const start = () => {
     stop();
+    if (disabledRef.current) return;
     stepRef.current();
     let interval = REPEAT_START_MS;
     const repeat = () => {
+      if (disabledRef.current) return;
       stepRef.current();
       interval = Math.max(REPEAT_MIN_MS, interval * REPEAT_SPEEDUP);
       timerRef.current = setTimeout(repeat, interval);
@@ -34,13 +41,15 @@ export function useRepeat(onStep) {
 }
 
 export function RepeatButton({ onStep, label, accessibilityLabel, style, textStyle, disabled }) {
-  const repeat = useRepeat(onStep);
+  const repeat = useRepeat(onStep, disabled);
+  // Not the touchable's own `disabled`: switching it mid-hold drops the release.
   return (
     <TouchableOpacity
-      {...(disabled ? {} : repeat)}
-      disabled={disabled}
+      {...repeat}
+      activeOpacity={disabled ? 1 : 0.2}
       style={[styles.stepButton, disabled && styles.disabled, style]}
       accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
       accessibilityLabel={accessibilityLabel}
       hitSlop={6}
     >
@@ -52,7 +61,7 @@ export function RepeatButton({ onStep, label, accessibilityLabel, style, textSty
 }
 
 // − value +. With `parse`, tapping the value types an exact one on a decimal keypad.
-export function Stepper({ value, display, onStep, min, max, parse, onType, accessibilityLabel }) {
+export function Stepper({ value, display, onStep, min, max, parse, onType, accessibilityLabel, compact }) {
   const [draft, setDraft] = useState(null);
 
   const commit = () => {
@@ -71,10 +80,10 @@ export function Stepper({ value, display, onStep, min, max, parse, onType, acces
       accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
       onAccessibilityAction={(e) => onStep(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
     >
-      <RepeatButton label="−" onStep={() => onStep(-1)} disabled={value <= min} accessibilityLabel={`Decrease ${accessibilityLabel}`} />
+      <RepeatButton label="−" onStep={() => onStep(-1)} disabled={value <= min} style={compact && styles.stepButtonCompact} accessibilityLabel={`Decrease ${accessibilityLabel}`} />
       {parse ? (
         <TextInput
-          style={styles.stepValue}
+          style={[styles.stepValue, compact && styles.stepValueCompact]}
           value={draft ?? display}
           onFocus={() => setDraft('')}
           onChangeText={setDraft}
@@ -89,9 +98,9 @@ export function Stepper({ value, display, onStep, min, max, parse, onType, acces
           accessibilityLabel={accessibilityLabel}
         />
       ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={2} style={styles.stepValue}>{display}</Text>
+        <Text numberOfLines={1} maxFontSizeMultiplier={2} style={[styles.stepValue, compact && styles.stepValueCompact]}>{display}</Text>
       )}
-      <RepeatButton label="+" onStep={() => onStep(1)} disabled={value >= max} accessibilityLabel={`Increase ${accessibilityLabel}`} />
+      <RepeatButton label="+" onStep={() => onStep(1)} disabled={value >= max} style={compact && styles.stepButtonCompact} accessibilityLabel={`Increase ${accessibilityLabel}`} />
     </View>
   );
 }
@@ -213,6 +222,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  stepButtonCompact: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
   stepButtonText: {
     fontSize: 20,
     fontWeight: '500',
@@ -227,6 +241,11 @@ const styles = StyleSheet.create({
     color: '#111827',
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
+  },
+
+  stepValueCompact: {
+    minWidth: 44,
+    fontSize: 16,
   },
 
   // Segments

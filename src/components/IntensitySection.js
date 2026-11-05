@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
 import { Tabs, Segments, Stepper, RepeatButton } from './Controls';
 import { Chevron, VerticalRule } from './CallShape';
 import { LEVELS, LEVEL_KEYS, LEVEL_TEXT_COLOR } from '../constants/theme';
@@ -24,9 +25,8 @@ const MODES = ['Preset', 'Manual'];
 const SCOPES = { PerRound: 'Per round', WithinRound: 'Within round' };
 const SCOPE_BY_LABEL = { 'Per round': 'PerRound', 'Within round': 'WithinRound' };
 
-const LEVEL_LABELS = LEVEL_KEYS.map(k => LEVELS[k].label);
-const LEVEL_COLORS = Object.fromEntries(LEVEL_KEYS.map(k => [LEVELS[k].label, LEVELS[k].color]));
-const keyForLabel = (label) => LEVEL_KEYS.find(k => LEVELS[k].label === label);
+const GLOW_CLEAR = 0.3;    // the glow is clear out to this share of the way to the edge...
+const GLOW_OPACITY = 0.75; // ...and this strong at the edge
 
 const CHIP_WIDTH = 52;
 const CHIP_GAP = 8;
@@ -60,15 +60,7 @@ export default function IntensitySection({ config, update, rounds, work, attack,
 
       <View style={styles.body}>
         {config.scope === 'All' && (preset ? (
-          <View style={styles.row}>
-            <Segments
-              labels={LEVEL_LABELS}
-              value={LEVELS[config.level].label}
-              onChange={(label) => update({ level: keyForLabel(label) })}
-              colors={LEVEL_COLORS}
-              textColor={LEVEL_TEXT_COLOR}
-            />
-          </View>
+          <LevelButtons value={config.level} onChange={(level) => update({ level })} />
         ) : (
           <ManualRows
             entry={config.manual}
@@ -153,6 +145,7 @@ function ManualRows({ entry, onChange, work, attack }) {
 function WaitStepper({ wait, onChange, compact }) {
   return (
     <Stepper
+      compact={compact}
       value={wait}
       display={compact ? wait.toFixed(1) : formatWait(wait)}
       min={WAIT_MIN}
@@ -168,9 +161,10 @@ function WaitStepper({ wait, onChange, compact }) {
   );
 }
 
-function BeepsStepper({ beeps, max, onChange }) {
+function BeepsStepper({ beeps, max, onChange, compact }) {
   return (
     <Stepper
+      compact={compact}
       value={beeps}
       display={String(beeps)}
       min={1}
@@ -186,7 +180,7 @@ function RoundTable({ entries, onChange, work, attack }) {
   return (
     <View>
       <View style={styles.tableHeader}>
-        <Text style={[styles.tableHeading, styles.tableRound]}>Round</Text>
+        <Text numberOfLines={1} style={[styles.tableHeading, styles.tableRound]}>Rd</Text>
         <Text style={[styles.tableHeading, styles.tableCell]}>Avg. wait (s)</Text>
         <Text style={[styles.tableHeading, styles.tableCell]}>Beeps</Text>
       </View>
@@ -200,7 +194,7 @@ function RoundTable({ entries, onChange, work, attack }) {
                 <WaitStepper compact wait={wait} onChange={(w) => set(i, manualFromWait(w))} />
               </View>
               <View style={styles.tableCell}>
-                <BeepsStepper beeps={beeps} max={max} onChange={(b) => set(i, manualFromBeeps(b))} />
+                <BeepsStepper compact beeps={beeps} max={max} onChange={(b) => set(i, manualFromBeeps(b))} />
               </View>
             </View>
           );
@@ -250,12 +244,13 @@ function RoundChips({ levels, onChange }) {
         {levels.map((key, i) => (
           <TouchableOpacity
             key={i}
-            style={[styles.roundChip, { width: chipWidth, backgroundColor: LEVELS[key].color }]}
+            style={[styles.roundChip, { width: chipWidth, borderColor: LEVELS[key].color }]}
             onPress={() => onChange(levels.map((k, j) => (j === i ? nextLevel(k) : k)))}
             accessibilityRole="button"
             accessibilityLabel={`Round ${i + 1}: ${LEVELS[key].label}`}
             accessibilityHint="Changes this round's intensity"
           >
+            <Glow color={LEVELS[key].color} radius={8.5} />
             <Text maxFontSizeMultiplier={1.5} style={styles.roundChipNumber}>{i + 1}</Text>
             <Text maxFontSizeMultiplier={1.5} style={styles.roundChipLevel}>{key}</Text>
           </TouchableOpacity>
@@ -283,12 +278,13 @@ function ThirdsBar({ preset, levels, waits, onChangeLevels, onChangeWaits }) {
               <React.Fragment key={i}>
                 {divider}
                 <TouchableOpacity
-                  style={[styles.third, { backgroundColor: LEVELS[key].color }]}
+                  style={styles.third}
                   onPress={() => onChangeLevels(levels.map((k, j) => (j === i ? nextLevel(k) : k)))}
                   accessibilityRole="button"
                   accessibilityLabel={`${THIRD_NAMES[i]} of the round: ${LEVELS[key].label}`}
                   accessibilityHint="Changes its intensity"
                 >
+                  <Glow color={LEVELS[key].color} />
                   <Text maxFontSizeMultiplier={1.5} style={styles.thirdLevel}>{key}</Text>
                 </TouchableOpacity>
               </React.Fragment>
@@ -298,7 +294,7 @@ function ThirdsBar({ preset, levels, waits, onChangeLevels, onChangeWaits }) {
             <React.Fragment key={i}>
               {divider}
               <View
-                style={[styles.third, styles.thirdManual, { backgroundColor: LEVELS[key].color }]}
+                style={[styles.third, styles.thirdManual]}
                 accessible
                 accessibilityRole="adjustable"
                 accessibilityLabel={`${THIRD_NAMES[i]} of the round, average wait`}
@@ -306,6 +302,7 @@ function ThirdsBar({ preset, levels, waits, onChangeLevels, onChangeWaits }) {
                 accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
                 onAccessibilityAction={(e) => setWait(i, clampWait(waits[i] + (e.nativeEvent.actionName === 'increment' ? WAIT_STEP : -WAIT_STEP)))}
               >
+                <Glow color={LEVELS[key].color} />
                 <RepeatButton
                   label={<Chevron direction="up" size={16} color={LEVEL_TEXT_COLOR} />}
                   accessibilityLabel="Longer wait"
@@ -333,6 +330,70 @@ function ThirdsBar({ preset, levels, waits, onChangeLevels, onChangeWaits }) {
 
 const THIRD_NAMES = ['First third', 'Middle third', 'Last third'];
 
+// The level's colour glows in from the edges and fades to clear in the middle.
+// It's sized from its layout: percentage sizes don't fill the parent reliably.
+function Glow({ color, radius = 0 }) {
+  const id = `glow${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  const [size, setSize] = useState(null);
+  return (
+    <View
+      style={StyleSheet.absoluteFill}
+      pointerEvents="none"
+      onLayout={(e) => setSize(e.nativeEvent.layout)}
+    >
+      {size && (
+        <Svg width={size.width} height={size.height}>
+          <Defs>
+            <RadialGradient
+              id={id}
+              gradientUnits="userSpaceOnUse"
+              cx={size.width / 2}
+              cy={size.height / 2}
+              rx={size.width / 2}
+              ry={size.height / 2}
+              fx={size.width / 2}
+              fy={size.height / 2}
+            >
+              <Stop offset={GLOW_CLEAR} stopColor={color} stopOpacity={0} />
+              <Stop offset={1} stopColor={color} stopOpacity={GLOW_OPACITY} />
+            </RadialGradient>
+          </Defs>
+          <Rect x={0} y={0} width={size.width} height={size.height} rx={radius} fill={`url(#${id})`} />
+        </Svg>
+      )}
+    </View>
+  );
+}
+
+// Low, Medium, High. The chosen one glows in its colour with a matching edge.
+function LevelButtons({ value, onChange }) {
+  return (
+    <View style={styles.levelRow}>
+      {LEVEL_KEYS.map((key) => {
+        const active = key === value;
+        return (
+          <TouchableOpacity
+            key={key}
+            style={[styles.levelButton, active && { borderColor: LEVELS[key].color }]}
+            onPress={() => onChange(key)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+          >
+            {active && <Glow color={LEVELS[key].color} radius={7} />}
+            <Text
+              numberOfLines={1}
+              maxFontSizeMultiplier={2.5}
+              style={[styles.levelText, active && styles.levelTextActive]}
+            >
+              {LEVELS[key].label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
@@ -346,6 +407,27 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+  },
+  levelRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  levelButton: {
+    flex: 1,
+    paddingVertical: 11,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  levelText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  levelTextActive: {
+    color: LEVEL_TEXT_COLOR,
   },
 
   // Manual
@@ -406,7 +488,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F3F4F6',
   },
   tableRound: {
-    width: 52,
+    width: 36,
   },
   tableRoundText: {
     fontSize: 16,
@@ -444,8 +526,11 @@ const styles = StyleSheet.create({
   },
   roundChip: {
     borderRadius: 10,
+    borderWidth: 1.5,
     paddingVertical: 8,
     alignItems: 'center',
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
   },
   roundChipNumber: {
     fontSize: 16,
@@ -464,6 +549,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 10,
     overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
   },
   third: {
     flex: 1,

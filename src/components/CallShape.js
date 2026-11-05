@@ -4,21 +4,26 @@ import Svg, { Path, Polygon, Rect, Circle, Line } from 'react-native-svg';
 import { CALL_SHAPES } from '../constants/theme';
 
 // A call's shape with its letter inside: A triangle, B square, C circle.
-export function CallShape({ call, size, color, letterColor = '#FFFFFF' }) {
+// Thin lines and a light letter, like the home screen's button and title.
+// lineWidth is in screen points, whatever the size.
+export function CallShape({ call, size, color, lineWidth = size < 60 ? 1.5 : 2.5 }) {
   const shape = CALL_SHAPES[call];
+  const stroke = (lineWidth * 100) / size; // in viewBox units
+  const inset = stroke / 2 + 1;
   // The triangle's letter sits low, where the triangle is widest.
-  const letterOffset = shape === 'triangle' ? size * 0.14 : 0;
+  const letterOffset = shape === 'triangle' ? size * 0.16 : 0;
+  const line = { fill: 'none', stroke: color, strokeWidth: stroke, strokeLinejoin: 'round' };
   return (
     <View style={{ width: size, height: size }} accessible accessibilityLabel={`Call ${call.toUpperCase()}`}>
       <Svg width={size} height={size} viewBox="0 0 100 100">
-        {shape === 'triangle' && <Polygon points="50,6 96,90 4,90" fill={color} strokeLinejoin="round" stroke={color} strokeWidth={6} />}
-        {shape === 'square' && <Rect x={8} y={8} width={84} height={84} rx={10} fill={color} />}
-        {shape === 'circle' && <Circle cx={50} cy={50} r={46} fill={color} />}
+        {shape === 'triangle' && <Polygon points={`50,${inset + 4} ${100 - inset},${92 - inset} ${inset},${92 - inset}`} {...line} />}
+        {shape === 'square' && <Rect x={inset + 4} y={inset + 4} width={92 - 2 * inset} height={92 - 2 * inset} rx={14} {...line} />}
+        {shape === 'circle' && <Circle cx={50} cy={50} r={48 - inset} {...line} />}
       </Svg>
       <View style={[StyleSheet.absoluteFill, styles.letterWrap, { paddingTop: letterOffset }]}>
         <Text
           allowFontScaling={false}
-          style={[styles.letter, { color: letterColor, fontSize: size * 0.42 }]}
+          style={{ color, fontSize: size * 0.4, fontWeight: size < 60 ? '400' : '200' }}
         >
           {call.toUpperCase()}
         </Text>
@@ -31,12 +36,13 @@ export function CallShape({ call, size, color, letterColor = '#FFFFFF' }) {
 const TRACE = 'M 0,471 L 103,471 Q 156.5,358 210,471 L 305,471 L 350,579 L 362.7,471 L 406,101.5 L 443.6,471 L 464,672 L 515,471 L 607,471 Q 662.5,280 718,471 L 813,471';
 const R_SPIKE = 'M 362.7,471 L 406,101.5 L 443.6,471';
 
-export function RandoroSymbol({ width, color, spikeColor = color }) {
+export function RandoroSymbol({ width, color, spikeColor = color, lineWidth = 2.5 }) {
   const height = width * (620 / 813);
+  const stroke = (lineWidth * 813) / width; // in viewBox units
   return (
     <Svg width={width} height={height} viewBox="0 80 813 620" accessibilityLabel="Beep">
-      <Path d={TRACE} fill="none" stroke={color} strokeWidth={22} strokeLinecap="round" strokeLinejoin="round" />
-      <Path d={R_SPIKE} fill="none" stroke={spikeColor} strokeWidth={22} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d={TRACE} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d={R_SPIKE} fill="none" stroke={spikeColor} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
@@ -79,8 +85,5 @@ const styles = StyleSheet.create({
   letterWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  letter: {
-    fontWeight: '800',
   },
 });

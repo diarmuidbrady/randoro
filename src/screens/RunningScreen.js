@@ -365,11 +365,9 @@ export default function RunningScreen({ route, navigation }) {
     : 1;
   const softFlash = flashEnabled && flashStyle === 'Soft';
 
-  // The shape is red on Soft's pink and Sharp's white, and white on the red
-  // background otherwise.
-  const lightCall = softFlash || sharpFlash;
-  const shapeColor = lightCall ? CALL_RED : phaseColors.text;
-  const letterColor = lightCall ? '#FFFFFF' : CALL_RED;
+  // The shape is drawn red on Soft's pink and Sharp's white, and white on the
+  // red background otherwise.
+  const shapeColor = softFlash || sharpFlash ? CALL_RED : phaseColors.text;
 
   // During a call the timer shrinks and moves up to sit just below the top bar.
   const timerShift = timerLayout
@@ -443,7 +441,7 @@ export default function RunningScreen({ route, navigation }) {
             >
               {call.call === 'classic'
                 ? <RandoroSymbol width={shapeSize * 1.5} color={shapeColor} />
-                : <CallShape call={call.call} size={shapeSize} color={shapeColor} letterColor={letterColor} />}
+                : <CallShape call={call.call} size={shapeSize} color={shapeColor} />}
               {callMoves.length > 0 && (
                 <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={[styles.callCombo, { color: shapeColor }]}>
                   {callMoves.join(' · ')}
