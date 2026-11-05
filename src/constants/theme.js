@@ -27,7 +27,5 @@ export const LEVEL_TEXT_COLOR = '#111827';
 export const CALL_SHAPES = { a: 'triangle', b: 'square', c: 'circle' };
 export const CALL_RED = '#EF4444';
 
-// Setup surfaces: the boxes inside Random beeps sit on a light grey face, and
-// unchosen buttons on a light charcoal fill.
-export const FACE_COLOR = '#F4F5F7';
+// Unchosen buttons on the setup screen sit in a light charcoal fill.
 export const UNSELECTED_FILL = '#E6E8EC';

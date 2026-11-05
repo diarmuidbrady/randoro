@@ -68,7 +68,7 @@ export const TIPS = {
   },
   manual: {
     target: 'intensity',
-    caption: 'Set the Avg. wait or the Calls per round: change one and the other follows. Advanced has per-round and within-round intensity.',
+    caption: 'Set the Avg. wait or the Calls per round: change one and the other follows.',
   },
   advanced: {
     target: 'advanced',
@@ -76,7 +76,7 @@ export const TIPS = {
   },
   PerRound: {
     target: 'intensity',
-    caption: 'Set each round on its own. In Preset, tap a round to change its level, or pick a pattern.',
+    caption: 'Tap a round to change its level, or pick a pattern to set them all.',
   },
   WithinRound: {
     target: 'intensity',

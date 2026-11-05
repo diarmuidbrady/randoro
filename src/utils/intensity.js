@@ -71,45 +71,29 @@ export const manualFromWait = (wait) => ({ wait: clampWait(wait), beeps: 1, by: 
 export const manualFromBeeps = (beeps) => ({ wait: WAIT_MIN, beeps, by: 'beeps' });
 
 // The plan for one round: the segments it's split into and how dense each is.
-// A segment is { wait } or { beeps }.
+// A segment is { wait } or { beeps }. Per round and within round (Advanced)
+// are Preset only; Manual is one setting for every round.
 export function roundPlan(config, roundIndex, work, attack) {
   const rounds = parseInt(config.rounds) || 1;
-  const preset = config.intensityMode === 'Preset';
+
+  if (config.intensityMode === 'Manual') {
+    const { wait, beeps } = resolveManual(config.manual, work, attack);
+    return [config.manual.by === 'beeps' ? { beeps } : { wait }];
+  }
 
   if (config.scope === 'WithinRound') {
-    return preset
-      ? config.thirdLevels.map((key) => ({ wait: levelWait(key) }))
-      : config.thirdWaits.map((wait) => ({ wait }));
+    return config.thirdLevels.map((key) => ({ wait: levelWait(key) }));
   }
-
-  if (preset) {
-    const level = config.scope === 'PerRound'
-      ? fitRounds(config.roundLevels, rounds, config.level)[roundIndex]
-      : config.level;
-    return [{ wait: levelWait(level) }];
-  }
-
-  const entry = config.scope === 'PerRound'
-    ? fitRounds(config.roundManual, rounds, config.manual)[roundIndex]
-    : config.manual;
-  const { wait, beeps } = resolveManual(entry, work, attack);
-  return [entry.by === 'beeps' ? { beeps } : { wait }];
+  const level = config.scope === 'PerRound'
+    ? fitRounds(config.roundLevels, rounds, config.level)[roundIndex]
+    : config.level;
+  return [{ wait: levelWait(level) }];
 }
 
-// Moving between Preset and Manual carries the intensity over.
-export function presetToManual(config) {
-  return {
-    manual: manualFromWait(levelWait(config.level)),
-    roundManual: config.roundLevels.map((key) => manualFromWait(levelWait(key))),
-    thirdWaits: config.thirdLevels.map(levelWait),
-  };
-}
+// Moving between Preset and Manual carries the base intensity over. Preset's
+// per-round and within-round levels are left as they were.
+export const presetToManual = (config) => ({ manual: manualFromWait(levelWait(config.level)) });
 
-export function manualToPreset(config, work, attack) {
-  const waitOf = (entry) => resolveManual(entry, work, attack).wait;
-  return {
-    level: nearestLevel(waitOf(config.manual)),
-    roundLevels: config.roundManual.map((entry) => nearestLevel(waitOf(entry))),
-    thirdLevels: config.thirdWaits.map(nearestLevel),
-  };
-}
+export const manualToPreset = (config, work, attack) => ({
+  level: nearestLevel(resolveManual(config.manual, work, attack).wait),
+});

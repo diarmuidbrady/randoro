@@ -28,7 +28,7 @@ import {
   tourSteps,
   switchTourPath,
 } from '../components/CoachMarks';
-import { FLASH_STYLES, LEVELS, FACE_COLOR } from '../constants/theme';
+import { FLASH_STYLES, LEVELS } from '../constants/theme';
 import { formatTime, parseSeconds } from '../utils/time';
 import { generateWorkout, maxPings, meanAttack } from '../utils/generator';
 import { attackTime, callKey, BETWEEN_BEEPS_MAX, MAX_CALLS } from '../utils/combo';
@@ -56,18 +56,22 @@ const DEFAULT_CONFIG = {
   betweenBeeps: '',
   focus: '',
   intensityMode: 'Preset',     // Preset or Manual
-  scope: 'All',                // All, PerRound or WithinRound (Advanced)
+  scope: 'All',                // All, PerRound or WithinRound (Advanced, Preset only)
   level: 'M',
   roundLevels: [],
   thirdLevels: ['M', 'M', 'M'],
   manual: manualFromWait(LEVELS.M.wait),
-  roundManual: [],
-  thirdWaits: [LEVELS.M.wait, LEVELS.M.wait, LEVELS.M.wait],
   flashEnabled: true,
   flashStyle: 'Soft',
   vibrationEnabled: true,
-  collapsed: {},               // sections shown as their one-line summary
+  // Sections shown as their one-line summary.
+  collapsed: { beeps: true, intensity: true, feedback: true },
 };
+
+// Only one section of each group is open at a time: opening one collapses the rest.
+const MAIN_SECTIONS = ['structure', 'beeps'];
+const SUB_SECTIONS = ['focus', 'intensity', 'feedback'];
+const GROUPS = [MAIN_SECTIONS, SUB_SECTIONS];
 
 const TOOLTIPS = {
   combo: {
@@ -85,6 +89,13 @@ function withDefaults(saved) {
   const config = { ...DEFAULT_CONFIG, ...(saved ?? {}) };
   if (!Array.isArray(config.calls) || config.calls.length === 0) config.calls = DEFAULT_CONFIG.calls;
   config.calls = config.calls.slice(0, MAX_CALLS).map(c => ({ ...newCall(), ...c }));
+  // An older save may have more than one section of a group open: keep the first.
+  const collapsed = { ...config.collapsed };
+  for (const group of GROUPS) {
+    const open = group.filter(key => !collapsed[key]);
+    open.slice(1).forEach(key => { collapsed[key] = true; });
+  }
+  config.collapsed = collapsed;
   return config;
 }
 
@@ -271,7 +282,16 @@ export default function SetupScreen({ navigation }) {
 
   const { restFirst, collapsed } = config;
   const setField = (key) => (value) => update({ [key]: value });
-  const toggleSection = (key) => update(c => ({ collapsed: { ...c.collapsed, [key]: !c.collapsed[key] } }));
+  // Opening a section collapses the others in its group.
+  const toggleSection = (key) => update(c => {
+    const opening = !!c.collapsed[key];
+    const next = { ...c.collapsed, [key]: !opening };
+    if (opening) {
+      const group = GROUPS.find(g => g.includes(key)) ?? [];
+      group.forEach(other => { if (other !== key) next[other] = true; });
+    }
+    return { collapsed: next };
+  });
 
   return (
     <View ref={containerRef} onLayout={(e) => setFrame(e.nativeEvent.layout)} style={[styles.container, { paddingTop: insets.top }]}>
@@ -660,10 +680,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
   },
+  // Focus, Intensity and Feedback are rows inside Random beeps' box, split by hairlines.
   subsection: {
-    backgroundColor: FACE_COLOR,
-    borderRadius: 12,
-    overflow: 'hidden',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -675,14 +695,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   subsectionHeader: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  beepsBody: {
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-    gap: 12,
-  },
+  beepsBody: {},
   sectionTitleTouch: {
     flex: 1,
   },
@@ -718,7 +734,8 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   offBlock: {
-    paddingHorizontal: 4,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
     gap: 8,
   },
 

@@ -6,8 +6,6 @@ import { UNSELECTED_FILL } from '../constants/theme';
 const SEGMENT_RADIUS = 10;
 const SEGMENT_BORDER = 1.5;
 export const SELECTED_COLOR = '#111827';
-const TAB_STRIP_COLOR = '#E5E7EB';
-const TAB_RADIUS = 10;
 
 // Edge glow: colour runs in from the border, parallel to it, and fades to clear.
 const GLOW_DEPTH = 0.3;      // how far in it reaches, as a share of the shorter side...
@@ -72,7 +70,7 @@ export function RepeatButton({ onStep, label, accessibilityLabel, style, textSty
 }
 
 // − value +. With `parse`, tapping the value types an exact one on a decimal keypad.
-export function Stepper({ value, display, onStep, min, max, parse, onType, accessibilityLabel, compact }) {
+export function Stepper({ value, display, onStep, min, max, parse, onType, accessibilityLabel }) {
   const [draft, setDraft] = useState(null);
 
   const commit = () => {
@@ -91,10 +89,10 @@ export function Stepper({ value, display, onStep, min, max, parse, onType, acces
       accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
       onAccessibilityAction={(e) => onStep(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
     >
-      <RepeatButton label="−" onStep={() => onStep(-1)} disabled={value <= min} style={compact && styles.stepButtonCompact} accessibilityLabel={`Decrease ${accessibilityLabel}`} />
+      <RepeatButton label="−" onStep={() => onStep(-1)} disabled={value <= min} accessibilityLabel={`Decrease ${accessibilityLabel}`} />
       {parse ? (
         <TextInput
-          style={[styles.stepValue, compact && styles.stepValueCompact]}
+          style={styles.stepValue}
           value={draft ?? display}
           onFocus={() => setDraft('')}
           onChangeText={setDraft}
@@ -109,9 +107,9 @@ export function Stepper({ value, display, onStep, min, max, parse, onType, acces
           accessibilityLabel={accessibilityLabel}
         />
       ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={2} style={[styles.stepValue, compact && styles.stepValueCompact]}>{display}</Text>
+        <Text numberOfLines={1} maxFontSizeMultiplier={2} style={styles.stepValue}>{display}</Text>
       )}
-      <RepeatButton label="+" onStep={() => onStep(1)} disabled={value >= max} style={compact && styles.stepButtonCompact} accessibilityLabel={`Increase ${accessibilityLabel}`} />
+      <RepeatButton label="+" onStep={() => onStep(1)} disabled={value >= max} accessibilityLabel={`Increase ${accessibilityLabel}`} />
     </View>
   );
 }
@@ -191,45 +189,27 @@ export function Segments({ labels, value, onChange, colors, dark, renderLabel = 
   );
 }
 
-// Browser-style tabs: the chosen tab is the card's colour and runs into the
-// body below, with curved corners where it meets the body.
-// `inset` keeps the tabs in from the strip's ends, e.g. clear of the body's rounded corners.
-export function Tabs({ labels, value, onChange, stripColor = TAB_STRIP_COLOR, activeColor = '#FFFFFF', inset = TAB_RADIUS }) {
+// Tabs for branches (Preset / Manual): the chosen one is dark with a bar
+// under it, on the same surface as its body.
+export function Tabs({ labels, value, onChange }) {
   return (
-    <View style={[styles.tabStrip, { backgroundColor: stripColor, paddingHorizontal: inset }]} accessibilityRole="tablist">
-      {labels.map((label, i) => {
+    <View style={styles.tabBar} accessibilityRole="tablist">
+      {labels.map(label => {
         const active = value === label;
-        // Dividers only sit between two unchosen tabs.
-        const divider = i > 0 && !active && labels[i - 1] !== value;
         return (
-          <React.Fragment key={label}>
-            {i > 0 && <View style={[styles.tabDivider, !divider && styles.tabDividerHidden]} />}
-            <TouchableOpacity
-              style={[styles.tab, active && { backgroundColor: activeColor }]}
-              onPress={() => onChange(label)}
-              activeOpacity={active ? 1 : 0.6}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-            >
-              {active && (
-                <>
-                  <View style={[styles.tabFlare, styles.tabFlareLeft, { backgroundColor: activeColor }]}>
-                    <View style={[styles.tabFlareCut, styles.tabFlareCutLeft, { backgroundColor: stripColor }]} />
-                  </View>
-                  <View style={[styles.tabFlare, styles.tabFlareRight, { backgroundColor: activeColor }]}>
-                    <View style={[styles.tabFlareCut, styles.tabFlareCutRight, { backgroundColor: stripColor }]} />
-                  </View>
-                </>
-              )}
-              <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                style={[styles.tabText, active && styles.tabTextActive]}
-              >
-                {label}
-              </Text>
-            </TouchableOpacity>
-          </React.Fragment>
+          <TouchableOpacity
+            key={label}
+            style={styles.tab}
+            onPress={() => onChange(label)}
+            activeOpacity={active ? 1 : 0.6}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+          >
+            <Text numberOfLines={1} maxFontSizeMultiplier={2} style={[styles.tabText, active && styles.tabTextActive]}>
+              {label}
+            </Text>
+            <View style={[styles.tabLine, active && styles.tabLineActive]} />
+          </TouchableOpacity>
         );
       })}
     </View>
@@ -257,11 +237,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepButtonCompact: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-  },
   stepButtonText: {
     fontSize: 20,
     fontWeight: '500',
@@ -276,11 +251,6 @@ const styles = StyleSheet.create({
     color: '#111827',
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
-  },
-
-  stepValueCompact: {
-    minWidth: 44,
-    fontSize: 16,
   },
 
   // Segments
@@ -306,7 +276,7 @@ const styles = StyleSheet.create({
   },
   segmentButtonActive: {
     backgroundColor: '#FFFFFF',
-    borderColor: '#D1D5DB',
+    borderColor: '#9CA3AF',
   },
   segmentText: {
     fontSize: 13,
@@ -323,61 +293,33 @@ const styles = StyleSheet.create({
   },
 
   // Tabs
-  tabStrip: {
+  tabBar: {
     flexDirection: 'row',
-    alignItems: 'stretch',
-    backgroundColor: TAB_STRIP_COLOR,
-    paddingHorizontal: TAB_RADIUS,
-    paddingTop: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   tab: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderTopLeftRadius: TAB_RADIUS,
-    borderTopRightRadius: TAB_RADIUS,
+    paddingTop: 10,
   },
   tabText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
     color: '#6B7280',
+    paddingBottom: 10,
   },
   tabTextActive: {
-    color: '#111827',
+    fontWeight: '600',
+    color: SELECTED_COLOR,
   },
-  tabDivider: {
-    width: 1,
-    marginVertical: 10,
-    backgroundColor: '#C4C8CE',
+  // Sits over the bar's bottom line.
+  tabLine: {
+    alignSelf: 'stretch',
+    height: 2,
+    marginBottom: -1,
   },
-  tabDividerHidden: {
-    backgroundColor: 'transparent',
-  },
-  // A white square with a strip-coloured quarter circle on top, at each
-  // bottom corner of the chosen tab, makes the curve into the body.
-  tabFlare: {
-    position: 'absolute',
-    bottom: 0,
-    width: TAB_RADIUS,
-    height: TAB_RADIUS,
-    backgroundColor: '#FFFFFF',
-  },
-  tabFlareLeft: {
-    left: -TAB_RADIUS,
-  },
-  tabFlareRight: {
-    right: -TAB_RADIUS,
-  },
-  tabFlareCut: {
-    flex: 1,
-    backgroundColor: TAB_STRIP_COLOR,
-  },
-  tabFlareCutLeft: {
-    borderBottomRightRadius: TAB_RADIUS,
-  },
-  tabFlareCutRight: {
-    borderBottomLeftRadius: TAB_RADIUS,
+  tabLineActive: {
+    backgroundColor: SELECTED_COLOR,
   },
 });

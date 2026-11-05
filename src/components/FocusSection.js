@@ -308,8 +308,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   rows: {
-    paddingHorizontal: 12,
-    paddingBottom: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
     gap: 8,
   },
   swipeContainer: {
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   rowsLabel: {
-    paddingLeft: 4,
+    paddingBottom: 2,
   },
   textBox: {
     borderWidth: 1,

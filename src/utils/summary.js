@@ -36,17 +36,11 @@ export function focusSummary(config) {
 
 export function intensitySummary(config, work, attack) {
   const rounds = parseInt(config.rounds) || 1;
-  const waits = (list) => list.map(w => w.toFixed(1)).join(' / ') + ' s';
   if (config.intensityMode === 'Preset') {
     if (config.scope === 'PerRound') return `Preset per round · ${fitRounds(config.roundLevels, rounds, config.level).join(' ')}`;
     if (config.scope === 'WithinRound') return `Preset within round · ${config.thirdLevels.join(' ')}`;
     return `Preset · ${LEVELS[config.level].label}`;
   }
-  if (config.scope === 'PerRound') {
-    const entries = fitRounds(config.roundManual, rounds, config.manual);
-    return `Manual per round · ${waits(entries.map(e => resolveManual(e, work, attack).wait))}`;
-  }
-  if (config.scope === 'WithinRound') return `Manual within round · ${waits(config.thirdWaits)}`;
   const { wait, beeps } = resolveManual(config.manual, work, attack);
   return `Manual · ${wait.toFixed(1)} s avg. wait · ${beeps} calls per round`;
 }

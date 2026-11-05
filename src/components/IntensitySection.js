@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { Tabs, Segments, Stepper, RepeatButton, EdgeGlow } from './Controls';
 import Svg, { Path } from 'react-native-svg';
+import { Tabs, Segments, Stepper, EdgeGlow } from './Controls';
 import { Chevron, VerticalRule } from './CallShape';
-import { LEVELS, LEVEL_KEYS, LEVEL_TEXT_COLOR, FACE_COLOR, UNSELECTED_FILL } from '../constants/theme';
-
-const BODY_RADIUS = 12;
+import { LEVELS, LEVEL_KEYS, LEVEL_TEXT_COLOR } from '../constants/theme';
 import {
   PATTERNS,
   WAIT_MIN,
@@ -14,7 +12,6 @@ import {
   THIRDS,
   fitRounds,
   nextLevel,
-  nearestLevel,
   clampWait,
   roundToStep,
   formatWait,
@@ -22,6 +19,7 @@ import {
   manualFromWait,
   manualFromBeeps,
 } from '../utils/intensity';
+
 
 const MODES = ['Preset', 'Manual'];
 const SCOPES = { PerRound: 'Per round', WithinRound: 'Within round' };
@@ -40,8 +38,9 @@ const CHIP_WIDTH = 52;
 const CHIP_GAP = 8;
 const CHIP_PEEK = 0.5; // how much of the last visible chip shows when the row scrolls
 
-// How often the beeps come: Preset levels or Manual numbers, the same for
-// every round unless Advanced sets them per round or within a round.
+// How often the beeps come. Preset is Low, Medium or High, the same for every
+// round unless Advanced sets it per round or within a round. Manual is one
+// Avg. wait or Calls per round, with no Advanced.
 export default function IntensitySection({ config, update, rounds, work, attack, onModeChange, onTip, target }) {
   const [advancedOpen, setAdvancedOpen] = useState(config.scope !== 'All');
   const preset = config.intensityMode === 'Preset';
@@ -61,22 +60,23 @@ export default function IntensitySection({ config, update, rounds, work, attack,
   };
 
   return (
-    <View style={styles.panel}>
-      {/* Preset and Manual are branches, not options, so they're tabs: on the
-          box's grey face, the chosen tab is white and runs into a white body. */}
-      <View ref={target('intensityTabs')} collapsable={false}>
-        <Tabs
-          labels={MODES}
-          value={config.intensityMode}
-          onChange={onModeChange}
-          stripColor={FACE_COLOR}
-          activeColor="#FFFFFF"
-          inset={BODY_RADIUS + 10}
-        />
+    <View>
+      {/* Preset and Manual are branches, not options, so they're tabs. */}
+      <View ref={target('intensityTabs')} collapsable={false} style={styles.tabs}>
+        <Tabs labels={MODES} value={config.intensityMode} onChange={onModeChange} />
       </View>
       <View style={styles.body}>
 
-        {config.scope === 'All' && (preset ? (
+        {!preset && (
+          <ManualRows
+            entry={config.manual}
+            onChange={(manual) => update({ manual })}
+            work={work}
+            attack={attack}
+          />
+        )}
+
+        {preset && config.scope === 'All' && (
           <View style={styles.row}>
             <Segments
               labels={LEVEL_LABELS}
@@ -85,60 +85,45 @@ export default function IntensitySection({ config, update, rounds, work, attack,
               colors={LEVEL_COLORS}
             />
           </View>
-        ) : (
-          <ManualRows
-            entry={config.manual}
-            onChange={(manual) => update({ manual })}
-            work={work}
-            attack={attack}
-          />
-        ))}
+        )}
 
-        {config.scope === 'PerRound' && (preset ? (
+        {preset && config.scope === 'PerRound' && (
           <RoundChips
             levels={fitRounds(config.roundLevels, rounds, config.level)}
             onChange={(roundLevels) => update({ roundLevels })}
           />
-        ) : (
-          <RoundTable
-            entries={fitRounds(config.roundManual, rounds, config.manual)}
-            onChange={(roundManual) => update({ roundManual })}
-            work={work}
-            attack={attack}
-          />
-        ))}
+        )}
 
-        {config.scope === 'WithinRound' && (
+        {preset && config.scope === 'WithinRound' && (
           <ThirdsBar
-            preset={preset}
             levels={config.thirdLevels}
-            waits={config.thirdWaits}
-            onChangeLevels={(thirdLevels) => update({ thirdLevels })}
-            onChangeWaits={(thirdWaits) => update({ thirdWaits })}
+            onChange={(thirdLevels) => update({ thirdLevels })}
           />
         )}
 
-        <View ref={target('advanced')} collapsable={false} style={styles.advancedBlock}>
-          <TouchableOpacity
-            onPress={toggleAdvanced}
-            style={styles.advancedLink}
-            accessibilityRole="button"
-            accessibilityState={{ expanded: advancedOpen }}
-            hitSlop={8}
-          >
-            <Text style={styles.advancedText}>Advanced</Text>
-            <Chevron direction={advancedOpen ? 'up' : 'down'} size={12} />
-          </TouchableOpacity>
-          {advancedOpen && (
-            <View style={styles.row}>
-              <Segments
-                labels={Object.values(SCOPES)}
-                value={SCOPES[config.scope]}
-                onChange={chooseScope}
-              />
-            </View>
-          )}
-        </View>
+        {preset && (
+          <View ref={target('advanced')} collapsable={false} style={styles.advancedBlock}>
+            <TouchableOpacity
+              onPress={toggleAdvanced}
+              style={styles.advancedLink}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: advancedOpen }}
+              hitSlop={8}
+            >
+              <Text style={styles.advancedText}>Advanced</Text>
+              <Chevron direction={advancedOpen ? 'up' : 'down'} size={12} />
+            </TouchableOpacity>
+            {advancedOpen && (
+              <View style={styles.row}>
+                <Segments
+                  labels={Object.values(SCOPES)}
+                  value={SCOPES[config.scope]}
+                  onChange={chooseScope}
+                />
+              </View>
+            )}
+          </View>
+        )}
       </View>
     </View>
   );
@@ -166,12 +151,11 @@ function ManualRows({ entry, onChange, work, attack }) {
   );
 }
 
-function WaitStepper({ wait, onChange, compact }) {
+function WaitStepper({ wait, onChange }) {
   return (
     <Stepper
-      compact={compact}
       value={wait}
-      display={compact ? wait.toFixed(1) : formatWait(wait)}
+      display={formatWait(wait)}
       min={WAIT_MIN}
       max={WAIT_MAX}
       onStep={(dir) => onChange(clampWait(roundToStep(wait + dir * WAIT_STEP)))}
@@ -185,10 +169,9 @@ function WaitStepper({ wait, onChange, compact }) {
   );
 }
 
-function BeepsStepper({ beeps, max, onChange, compact }) {
+function BeepsStepper({ beeps, max, onChange }) {
   return (
     <Stepper
-      compact={compact}
       value={beeps}
       display={String(beeps)}
       min={1}
@@ -196,35 +179,6 @@ function BeepsStepper({ beeps, max, onChange, compact }) {
       onStep={(dir) => onChange(Math.min(max, Math.max(1, beeps + dir)))}
       accessibilityLabel="Calls per round"
     />
-  );
-}
-
-function RoundTable({ entries, onChange, work, attack }) {
-  const set = (i, entry) => onChange(entries.map((e, j) => (j === i ? entry : e)));
-  return (
-    <View>
-      <View style={styles.tableHeader}>
-        <Text numberOfLines={1} style={[styles.tableHeading, styles.tableRound]}>Round</Text>
-        <Text style={[styles.tableHeading, styles.tableCell]}>Avg. wait (s)</Text>
-        <Text style={[styles.tableHeading, styles.tableCell]}>Calls</Text>
-      </View>
-      <ScrollView style={styles.tableScroll} nestedScrollEnabled>
-        {entries.map((entry, i) => {
-          const { wait, beeps, max } = resolveManual(entry, work, attack);
-          return (
-            <View key={i} style={styles.tableRow}>
-              <Text style={[styles.tableRoundText, styles.tableRound]}>{i + 1}</Text>
-              <View style={styles.tableCell}>
-                <WaitStepper compact wait={wait} onChange={(w) => set(i, manualFromWait(w))} />
-              </View>
-              <View style={styles.tableCell}>
-                <BeepsStepper compact beeps={beeps} max={max} onChange={(b) => set(i, manualFromBeeps(b))} />
-              </View>
-            </View>
-          );
-        })}
-      </ScrollView>
-    </View>
   );
 }
 
@@ -285,69 +239,30 @@ function RoundChips({ levels, onChange }) {
 }
 
 // ── Within round: one round split into thirds ───────────────
-function ThirdsBar({ preset, levels, waits, onChangeLevels, onChangeWaits }) {
-  const setWait = (i, wait) => onChangeWaits(waits.map((w, j) => (j === i ? wait : w)));
+function ThirdsBar({ levels, onChange }) {
   return (
     <View>
       <View style={styles.thirds}>
-        {Array.from({ length: THIRDS }, (_, i) => {
-          const key = preset ? levels[i] : nearestLevel(waits[i]);
-          const divider = i > 0 && (
-            <View style={styles.thirdDivider}>
-              <VerticalRule color="#9CA3AF" dash="0.1 5" width={2} round />
-            </View>
-          );
-          if (preset) {
-            return (
-              <React.Fragment key={i}>
-                {divider}
-                <TouchableOpacity
-                  style={[styles.third, thirdEdge(i)]}
-                  onPress={() => onChangeLevels(levels.map((k, j) => (j === i ? nextLevel(k) : k)))}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${THIRD_NAMES[i]} of the round: ${LEVELS[key].label}`}
-                  accessibilityHint="Changes its intensity"
-                >
-                  <EdgeGlow color={LEVELS[key].color} radius={0} opacity={THIRD_GLOW_OPACITY} maxDepth={THIRD_GLOW_DEPTH} />
-                  <ThirdOutline color={LEVELS[key].color} index={i} />
-                  <Text maxFontSizeMultiplier={1.5} style={styles.thirdLevel}>{key}</Text>
-                </TouchableOpacity>
-              </React.Fragment>
-            );
-          }
-          return (
-            <React.Fragment key={i}>
-              {divider}
-              <View
-                style={[styles.third, styles.thirdManual, thirdEdge(i)]}
-                accessible
-                accessibilityRole="adjustable"
-                accessibilityLabel={`${THIRD_NAMES[i]} of the round, average wait`}
-                accessibilityValue={{ text: formatWait(waits[i]) }}
-                accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
-                onAccessibilityAction={(e) => setWait(i, clampWait(waits[i] + (e.nativeEvent.actionName === 'increment' ? WAIT_STEP : -WAIT_STEP)))}
-              >
-                <EdgeGlow color={LEVELS[key].color} radius={0} opacity={THIRD_GLOW_OPACITY} maxDepth={THIRD_GLOW_DEPTH} />
-                <ThirdOutline color={LEVELS[key].color} index={i} />
-                <RepeatButton
-                  label={<Chevron direction="up" size={16} color={LEVEL_TEXT_COLOR} />}
-                  accessibilityLabel="Longer wait"
-                  style={styles.chevron}
-                  disabled={waits[i] >= WAIT_MAX}
-                  onStep={() => setWait(i, clampWait(roundToStep(waits[i] + WAIT_STEP)))}
-                />
-                <Text maxFontSizeMultiplier={1.5} style={styles.thirdWait}>{formatWait(waits[i])}</Text>
-                <RepeatButton
-                  label={<Chevron direction="down" size={16} color={LEVEL_TEXT_COLOR} />}
-                  accessibilityLabel="Shorter wait"
-                  style={styles.chevron}
-                  disabled={waits[i] <= WAIT_MIN}
-                  onStep={() => setWait(i, clampWait(roundToStep(waits[i] - WAIT_STEP)))}
-                />
+        {levels.map((key, i) => (
+          <React.Fragment key={i}>
+            {i > 0 && (
+              <View style={styles.thirdDivider}>
+                <VerticalRule color="#9CA3AF" dash="0.1 5" width={2} round />
               </View>
-            </React.Fragment>
-          );
-        })}
+            )}
+            <TouchableOpacity
+              style={[styles.third, thirdEdge(i)]}
+              onPress={() => onChange(levels.map((k, j) => (j === i ? nextLevel(k) : k)))}
+              accessibilityRole="button"
+              accessibilityLabel={`${THIRD_NAMES[i]} of the round: ${LEVELS[key].label}`}
+              accessibilityHint="Changes its intensity"
+            >
+              <EdgeGlow color={LEVELS[key].color} radius={0} opacity={THIRD_GLOW_OPACITY} maxDepth={THIRD_GLOW_DEPTH} />
+              <ThirdOutline color={LEVELS[key].color} index={i} />
+              <Text maxFontSizeMultiplier={1.5} style={styles.thirdLevel}>{key}</Text>
+            </TouchableOpacity>
+          </React.Fragment>
+        ))}
       </View>
       <Text style={styles.thirdsHint}>Applies to every round.</Text>
     </View>
@@ -400,17 +315,14 @@ function ThirdOutline({ color, index }) {
 }
 
 const styles = StyleSheet.create({
-  panel: {
-    paddingHorizontal: 12,
-    paddingBottom: 12,
+  tabs: {
+    paddingHorizontal: 16,
   },
   body: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 16,
+    paddingBottom: 18,
     gap: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: BODY_RADIUS,
   },
   row: {
     flexDirection: 'row',
@@ -448,41 +360,6 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
 
-  // Per-round table
-  tableHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingBottom: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  tableHeading: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#6B7280',
-  },
-  tableScroll: {
-    maxHeight: 320,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: UNSELECTED_FILL,
-  },
-  tableRound: {
-    width: 52,
-  },
-  tableRoundText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  tableCell: {
-    flex: 1,
-    alignItems: 'center',
-  },
 
   // Per-round chips
   perRound: {
@@ -541,9 +418,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     overflow: 'hidden',
   },
-  thirdManual: {
-    paddingVertical: 2,
-  },
   // Sits over the seam between two thirds.
   thirdDivider: {
     width: 4,
@@ -555,19 +429,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     color: LEVEL_TEXT_COLOR,
-  },
-  thirdWait: {
-    fontSize: 15,
-    fontWeight: '300',
-    color: LEVEL_TEXT_COLOR,
-    fontVariant: ['tabular-nums'],
-  },
-  chevron: {
-    width: '100%',
-    height: 28,
-    borderRadius: 0,
-    borderWidth: 0,
-    backgroundColor: 'transparent',
   },
   thirdsHint: {
     marginTop: 8,
