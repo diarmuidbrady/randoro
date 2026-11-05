@@ -28,7 +28,7 @@ import {
   tourSteps,
   switchTourPath,
 } from '../components/CoachMarks';
-import { FLASH_STYLES, LEVELS } from '../constants/theme';
+import { FLASH_STYLES, LEVELS, ACCENT, SWITCH_COLORS } from '../constants/theme';
 import { formatTime, parseSeconds } from '../utils/time';
 import { generateWorkout, maxPings, meanAttack } from '../utils/generator';
 import { attackTime, callKey, BETWEEN_BEEPS_MAX, MAX_CALLS } from '../utils/combo';
@@ -392,6 +392,7 @@ export default function SetupScreen({ navigation }) {
           headerRef={target('beepsToggle')}
           right={(
             <Switch
+              trackColor={SWITCH_COLORS}
               value={randomBeeps}
               onValueChange={setField('randomBeeps')}
               accessibilityLabel="Random beeps"
@@ -468,7 +469,7 @@ export default function SetupScreen({ navigation }) {
                 <View style={styles.feedbackBody}>
                   <View style={styles.toggleRow}>
                     <Text style={styles.toggleLabel}>Screen flash</Text>
-                    <Switch value={config.flashEnabled} onValueChange={setField('flashEnabled')} />
+                    <Switch trackColor={SWITCH_COLORS} value={config.flashEnabled} onValueChange={setField('flashEnabled')} />
                   </View>
                   {config.flashEnabled && (
                     <View style={styles.flashStyleRow}>
@@ -477,7 +478,7 @@ export default function SetupScreen({ navigation }) {
                   )}
                   <View style={[styles.toggleRow, styles.toggleRowDivided]}>
                     <Text style={styles.toggleLabel}>Vibration</Text>
-                    <Switch value={config.vibrationEnabled} onValueChange={setField('vibrationEnabled')} />
+                    <Switch trackColor={SWITCH_COLORS} value={config.vibrationEnabled} onValueChange={setField('vibrationEnabled')} />
                   </View>
                 </View>
               </Section>
@@ -611,8 +612,14 @@ function Section({ level, title, summary, collapsed, onToggle, right, headerRef,
           accessibilityHint={collapsed ? 'Shows the section' : 'Shows a summary'}
         >
           <View style={styles.sectionTitleRow}>
-            <Text maxFontSizeMultiplier={2} style={top ? styles.sectionTitle : styles.subsectionTitle}>{title}</Text>
-            <Chevron direction={collapsed ? 'down' : 'up'} size={top ? 14 : 12} color="#9CA3AF" />
+            {/* The open box inside Random beeps takes the accent, to show where you are. */}
+            <Text
+              maxFontSizeMultiplier={2}
+              style={[top ? styles.sectionTitle : styles.subsectionTitle, !top && !collapsed && { color: ACCENT }]}
+            >
+              {title}
+            </Text>
+            <Chevron direction={collapsed ? 'down' : 'up'} size={top ? 14 : 12} color={!top && !collapsed ? ACCENT : '#9CA3AF'} />
           </View>
           {collapsed && (
             <Text numberOfLines={1} maxFontSizeMultiplier={2} style={styles.summary}>{summary}</Text>
@@ -731,7 +738,7 @@ const styles = StyleSheet.create({
   textLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#374151',
+    color: ACCENT,
   },
   offBlock: {
     paddingHorizontal: 16,

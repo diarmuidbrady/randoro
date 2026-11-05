@@ -27,5 +27,12 @@ export const LEVEL_TEXT_COLOR = '#111827';
 export const CALL_SHAPES = { a: 'triangle', b: 'square', c: 'circle' };
 export const CALL_RED = '#EF4444';
 
+// The one accent on the setup screen, for whatever is active: the open
+// section heading and the labels under it, the chosen tab and switches that
+// are on. The chosen tab also sits on a light peach face.
+export const ACCENT = '#EF4444';
+export const ACCENT_FACE = '#FFF1EC';
+export const SWITCH_COLORS = { false: '#E5E7EB', true: ACCENT };
+
 // Unchosen buttons on the setup screen sit in a light charcoal fill.
 export const UNSELECTED_FILL = '#E6E8EC';

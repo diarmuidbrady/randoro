@@ -14,7 +14,7 @@ import {
 import { Swipeable } from 'react-native-gesture-handler';
 import { useAudioPlayer } from 'expo-audio';
 import { CallShape, SpeakerIcon, VerticalRule } from './CallShape';
-import { CALL_RED } from '../constants/theme';
+import { CALL_RED, ACCENT } from '../constants/theme';
 import {
   COMBO_LENGTHS,
   MAX_CALLS,
@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
   textLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#374151',
+    color: ACCENT,
   },
   rowsLabel: {
     paddingBottom: 2,
